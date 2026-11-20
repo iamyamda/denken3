@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>電験三種 毎日アプリ</title>
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--tx:#e2e8f0;--sub:#94a3b8;--ok:#22c55e;--ng:#ef4444;--ac:#3b82f6}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic UI",sans-serif;background:var(--bg);color:var(--tx)}
+main{max-width:560px;margin:0 auto;padding:16px 16px 48px}
+h1{font-size:20px;margin-bottom:2px}
+.sub{color:var(--sub);font-size:12px}
+.card{background:var(--card);border-radius:12px;padding:16px;margin:12px 0}
+.big{font-size:38px;font-weight:700;margin:6px 0}
+.small{font-size:16px;color:var(--sub);font-weight:400}
+button{font-family:inherit;font-size:16px;border:none;border-radius:10px;padding:14px;width:100%;margin-top:8px;background:#334155;color:var(--tx)}
+button:active{transform:scale(.98)}
+button.primary{background:var(--ac);font-weight:700}
+button.danger{background:#7f1d1d}
+button.mini{width:auto;margin:0;padding:6px 12px;font-size:12px;background:#334155;color:var(--sub)}
+.choice{background:#334155;text-align:left}
+.choices.done .choice{pointer-events:none;opacity:.55}
+.choice.correct{background:var(--ok)!important;color:#052e16;font-weight:700;opacity:1!important}
+.choice.wrong{background:var(--ng)!important;opacity:1!important}
+.tag{display:inline-block;font-size:11px;background:#334155;color:var(--sub);border-radius:6px;padding:3px 8px;margin-right:6px}
+.tag.lv2{background:#1d4ed8;color:#dbeafe}
+.qtext{font-size:17px;line-height:1.7;margin:12px 0 14px}
+.exp{background:var(--bg);border-radius:8px;padding:12px;font-size:14px;line-height:1.7;color:var(--sub)}
+.judge{font-size:18px;font-weight:700;margin-top:14px}
+.meta{font-size:12px;color:var(--sub);margin-top:8px}
+.planEcho{font-size:13px;color:#93c5fd;margin-top:10px;line-height:1.6}
+.firstCard{background:#172554;border:1px solid #1d4ed8;border-radius:8px;padding:12px;margin-top:12px;font-size:14px;line-height:1.7}
+.firstCard .t{font-weight:700;color:#93c5fd;margin-bottom:4px}
+.rate{display:flex;gap:8px}
+.rate button{margin-top:12px;font-size:13px;padding:12px 4px}
+.rate .r1{background:#7f1d1d}.rate .r2{background:#78350f}.rate .r3{background:#14532d}.rate .r4{background:#064e3b}
+.hidden{display:none}
+table{width:100%;font-size:13px;border-collapse:collapse}
+td,th{padding:6px 4px;border-bottom:1px solid #334155;text-align:left;white-space:nowrap}
+td.num,th.num{text-align:right}
+.bar{height:6px;background:#334155;border-radius:3px;overflow:hidden;margin-top:4px}
+.bar>div{height:100%;background:var(--ok)}
+textarea,input[type=text]{width:100%;background:var(--bg);color:var(--tx);border:1px solid #334155;border-radius:8px;font-size:14px;padding:10px;margin-top:4px;font-family:inherit}
+textarea{height:76px;resize:vertical}
+select{font-size:14px;padding:6px;border-radius:6px;background:#334155;color:var(--tx);border:none}
+#typeCard{position:fixed;inset:0;background:rgba(2,6,23,.85);z-index:20;align-items:center;justify-content:center;padding:16px}
+#typeCard:not(.hidden){display:flex}
+#typeCardInner{background:var(--card);border-radius:12px;padding:20px;max-width:480px;width:100%}
+#calcSheet{position:fixed;left:0;right:0;bottom:0;max-width:560px;margin:0 auto;background:var(--card);border-radius:16px 16px 0 0;padding:12px 12px calc(12px + env(safe-area-inset-bottom));z-index:10;box-shadow:0 -8px 30px rgba(0,0,0,.5)}
+#calcDisp{background:var(--bg);border-radius:8px;padding:14px 16px;font-size:26px;text-align:right;margin-bottom:8px;font-variant-numeric:tabular-nums;min-height:52px;word-break:break-all}
+.cgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.cgrid button{margin:0;font-size:18px;padding:14px 0}
+.cgrid .op{background:#1d4ed8}.cgrid .eq{background:var(--ok);color:#052e16}
+.calcHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.calcHead button{width:auto;margin:0;background:none;color:var(--sub);font-size:13px;padding:4px 8px}
+</style>
+</head>
+<body>
+<main>
+<h1>電験三種 毎日アプリ</h1>
+<div class="sub">初見は自分で考える → 答え合わせで型を学ぶ → 類題・難度アップで再訪。同じ型は数値違いの類題で再出題。</div>
+
+<div id="vHome">
+  <div class="card">
+    <div class="sub">今日のセット</div>
+    <div class="big"><span id="dueN">0</span><span class="small"> 復習</span> ＋ <span id="newN">0</span><span class="small"> 新規の型</span></div>
+    <div class="sub" id="homeMsg"></div>
+    <button class="primary" id="btnStart">はじめる</button>
+    <button id="btnPractice" class="hidden">自由練習（スケジュール外・混合10問）</button>
+  </div>
+  <div class="card" id="progressCard"></div>
+</div>
+
+<div id="vQuiz" class="hidden">
+  <div class="sub" id="qIdx"></div>
+  <div class="card">
+    <span class="tag" id="qUnit"></span><span class="tag" id="qLv"></span><span class="tag hidden" id="qNew">初見</span>
+    <button type="button" id="btnPeek" class="mini" style="float:right">型を見る</button>
+    <div class="qtext" id="qText"></div>
+    <div class="sub">ワークスペース（計算・メモはここで。電卓は本番CBTと同じ画面式）</div>
+    <textarea id="scratch" placeholder="計算メモ（自由に書く）"></textarea>
+    <button id="btnCalc">電卓を開く</button>
+    <div class="sub" style="margin-top:10px">方針（任意1行・書くと身に付く）</div>
+    <input type="text" id="planIn" placeholder="例: I＝E/(r＋R) を先に出す">
+    <button class="primary" id="btnReveal">解答を選ぶ</button>
+    <div class="choices hidden" id="choices"></div>
+    <div id="result" class="hidden">
+      <div class="judge" id="judge"></div>
+      <div class="meta" id="qMeta"></div>
+      <div class="firstCard hidden" id="firstCard"></div>
+      <div class="planEcho" id="planEcho"></div>
+      <div class="exp" id="qExp"></div>
+      <div class="rate" id="rateBox"></div>
+    </div>
+  </div>
+</div>
+
+<div id="vEnd" class="hidden">
+  <div class="card">
+    <div class="sub">今日の結果</div>
+    <div class="big" id="endStats"></div>
+    <div class="sub" id="endDetail" style="margin-bottom:8px"></div>
+    <button class="primary" id="btnHome">ホームへ</button>
+  </div>
+</div>
+
+<div id="vWeak" class="hidden">
+  <div class="card" id="weakCard"></div>
+  <button class="primary" id="btnWeakBack">戻る</button>
+</div>
+
+<div class="card">
+  <div class="sub" style="margin-bottom:8px">設定・データ</div>
+  <div>新規/日 <select id="selNew"><option>5</option><option>10</option><option>15</option><option>20</option></select>
+  （法規は問題投入後、別枠で毎日5問）</div>
+  <button id="btnWeak">弱点マップ</button>
+  <button id="btnExport">記録のエクスポート／インポート</button>
+  <textarea id="txData" class="hidden" placeholder="エクスポート: 出てきた JSON を全選択コピーして保存。インポート: JSONを貼り付けて下のボタン。"></textarea>
+  <button id="btnImport" class="hidden danger">この JSON に置き換える</button>
+  <button id="btnReset" class="danger">記録を全消去</button>
+</div>
+</main>
+
+<div id="calcSheet" class="hidden">
+  <div class="calcHead"><span class="sub">電卓（四則のみ・本番CBTと同じ使い勝手）</span><button id="btnCalcClose">✕ 閉じる</button></div>
+  <div id="calcDisp">0</div>
+  <div class="cgrid" id="calcKeys"></div>
+</div>
+
+<div id="typeCard" class="hidden">
+  <div id="typeCardInner">
+    <div class="sub">型のカード</div>
+    <div style="font-size:17px;font-weight:700;margin:8px 0" id="cardName"></div>
+    <div class="exp" id="cardBody"></div>
+    <button class="primary" id="btnCardClose">閉じる</button>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+"use strict";
+if(typeof DATA==="undefined"){
+  document.getElementById("progressCard").innerHTML="<div class='sub' style='color:#ef4444;font-size:14px'>⚠ data.js が読み込めませんでした。app.html と同じフォルダに data.js がある状態で、Edge または Chrome で開いてください。</div>";
+  throw new Error("data.js not loaded");
+}
+var U=DATA.units,T=DATA.types,KEY="dk3-v3";
+function um(id){return U.find(function(u){return u.id===id})}
+function tm(id){return T.find(function(t){return t.id===id})}
+function p2(n){return (n<10?"0":"")+n}
+function defaultState(){return {stT:{},set:{newPerDay:10,learned:{}}}}
+function validDate(s){
+  if(typeof s!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;
+  var p=s.split("-");
+  var d=new Date(+p[0],+p[1]-1,+p[2]);
+  return d.getFullYear()===+p[0]&&d.getMonth()===+p[1]-1&&d.getDate()===+p[2];
+}
+function posInt(v){ // 有限・非負の整数だけ通す（"1e999" や undefined は 0）
+  var n=Number(v);
+  return (isFinite(n)&&n>=0)?Math.floor(n):0;
+}
+function normalizeState(s){ // 外部データ・旧データを必ずv3の形に鋳直す（改竄・欠損に強くする）
+  if(!s||typeof s!=="object")return null;
+  var out=defaultState(),stT=s.stT;
+  if(stT&&typeof stT==="object"){
+    Object.keys(stT).forEach(function(k){
+      if(!tm(k))return;
+      var o=stT[k]||{};
+      out.stT[k]={
+        lv:(o.lv===2||o.m===true)?2:1,
+        streak:Math.min(3,posInt(o.streak)),
+        due:validDate(o.due)?o.due:null,
+        done:posInt(o.done),
+        x:posInt(o.x),
+        m:o.m===true,
+        secN:posInt(o.secN),
+        secSum:(isFinite(Number(o.secSum))&&Number(o.secSum)>=0)?Number(o.secSum):0,
+        born:validDate(o.born)?o.born:null
+      };
+    });
+  }
+  var np=Math.floor(Number(s.set&&s.set.newPerDay));
+  out.set.newPerDay=(isFinite(np)&&np>=1&&np<=50)?np:10;
+  var lr=(s.set&&s.set.learned);
+  if(lr&&typeof lr==="object")Object.keys(lr).forEach(function(d){
+    if(validDate(d))out.set.learned[d]=posInt(lr[d]);
+  });
+  return out;
+}
+var KEYMETA="dk3-m3";
+function keyT(tid){return "dk3-t-"+tid}
+function readMeta(){try{var m=JSON.parse(localStorage.getItem(KEYMETA));if(m&&typeof m==="object"&&!Array.isArray(m))return m}catch(e){}return null}
+function writeMeta(m){localStorage.setItem(KEYMETA,JSON.stringify(m))}
+function coerceRec(r){return {lv:(r.lv===2||r.m===true)?2:1,streak:Math.min(3,posInt(r.streak)),due:validDate(r.due)?r.due:null,done:posInt(r.done),x:posInt(r.x),m:r.m===true,secN:posInt(r.secN),secSum:(isFinite(Number(r.secSum))&&Number(r.secSum)>=0)?Number(r.secSum):0,born:validDate(r.born)?r.born:null}}
+function load(){
+  // 旧blobが残っている間はblobを正本として毎回移行し直す（移行中断でも元データが消えない）
+  var s=null;
+  try{var v3=JSON.parse(localStorage.getItem(KEY));if(v3)s=normalizeState(v3)}catch(e){}
+  if(!s)try{var v2=JSON.parse(localStorage.getItem("dk3-v2"));
+    if(v2&&v2.stT){var t2=defaultState();
+      Object.keys(v2.stT).forEach(function(k){var o=v2.stT[k]||{};
+        t2.stT[k]={lv:1,streak:0,due:o.due||null,done:o.done||0,x:o.x||0,m:!!o.m,secN:0,secSum:0,born:(typeof o.born==="string"&&validDate(o.born))?o.born:null}});
+      if(v2.set)t2.set.newPerDay=v2.set.newPerDay||10;
+      s=normalizeState(t2)}}catch(e){}
+  if(!s)try{var v1=JSON.parse(localStorage.getItem("dk3-v1"));
+    if(v1&&v1.st){var t1=defaultState();
+      Object.keys(v1.st).forEach(function(k){var m1=/^RI01-(\d{3})$/.exec(k);if(!m1)return;
+        var tid="RI01-T"+p2(parseInt(m1[1],10));if(!tm(tid))return;
+        var o=v1.st[k]||{};
+        t1.stT[tid]={lv:1,streak:0,due:o.due||null,done:o.done||0,x:o.x||0,m:!!o.m,secN:0,secSum:0,born:(typeof o.born==="string"&&validDate(o.born))?o.born:null}});
+      if(v1.set)t1.set.newPerDay=v1.set.newPerDay||10;
+      s=normalizeState(t1)}}catch(e){}
+  if(s){
+    Object.keys(s.stT).forEach(function(tid){var rec=s.stT[tid];rec.born=validDate(rec.born)?rec.born:null;localStorage.setItem(keyT(tid),JSON.stringify(rec))});
+    writeMeta({newPerDay:s.set.newPerDay});
+    // 旧blobは古い方から消す（最新＝正本を最後に消す。中断しても正本から再移行できる）
+    localStorage.removeItem("dk3-v1");localStorage.removeItem("dk3-v2");localStorage.removeItem(KEY);
+    return s;
+  }
+  // 保存単位は「1型1キー」。読み込み時に全部組み立てる。今日の新規数は born から導出（帳簿は持たない）
+  var out=defaultState(),any=false;
+  T.forEach(function(t){
+    try{
+      var r=JSON.parse(localStorage.getItem(keyT(t.id)));
+      if(r&&typeof r==="object"&&!Array.isArray(r)){out.stT[t.id]=coerceRec(r);any=true}
+    }catch(e){}
+  });
+  var meta=readMeta();
+  if(meta){
+    var np=Math.floor(Number(meta.newPerDay));
+    out.set.newPerDay=(isFinite(np)&&np>=1&&np<=50)?np:10;
+  }
+  return out;
+}
+var S=load();
+window.addEventListener("storage",function(e){
+  if(!/^dk3-/.test(e.key||""))return;
+  var quizActive=!document.getElementById("vQuiz").classList.contains("hidden");
+  S=load();
+  if(quizActive){
+    sess=[];
+    show("vHome");
+    renderHome();
+    alert("別のタブで記録が更新されたため、このセッションを中止しました。ホームからやり直してください。");
+  }else{renderHome()}
+});
+function iso(d){return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())}
+function today(){return iso(new Date())}
+function addDays(n){var d=new Date();d.setDate(d.getDate()+n);return iso(d)}
+var IV={"✕":3,"△":7,"◯":14,"◎":30};
+
+/* ---------- 類題ジェネレータ（数値は毎回変わる。lv1=基礎 / lv2=標準） ---------- */
+function pick(a){return a[Math.floor(Math.random()*a.length)]}
+function fmt(x){return String(Math.round(x*100)/100)}
+function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
+function mkch(ans,dis,unit){
+  var vals=[fmt(ans)];
+  for(var i=0;i<dis.length;i++){var v=fmt(dis[i]);if(vals.indexOf(v)===-1)vals.push(v);if(vals.length>=5)break}
+  var fb=[ans*2,ans/2,ans+1,ans*10,ans/10,ans+10];
+  for(var i2=0;i2<fb.length&&vals.length<5;i2++){
+    if(fb[i2]<=0||!isFinite(fb[i2]))continue;
+    var f2=fmt(fb[i2]);
+    if(f2!=="0"&&vals.indexOf(f2)===-1)vals.push(f2);
+  }
+  var correct=vals[0];shuffle(vals);
+  return {ch:vals.map(function(v){return v+" "+unit}),a:vals.indexOf(correct)}
+}
+var GEN={
+ohm:function(lv){
+  if(lv===2){var R=pick([2.5,4,8]),V=pick([3,6,7.5]),I=V/R;
+   return {q:R+" Ωの抵抗に "+V+" Vの電圧を加えたとき、この抵抗を流れる電流は。",
+    exp:"I＝V/R＝"+V+"/"+R+"＝"+fmt(I)+" A",ans:I,dis:[I*10,I/10,R/V,V],unit:"A"}}
+  var R1=pick([25,50,100,200]),V1=pick([10,20,50,100]),I1=V1/R1;
+  return {q:R1+" Ωの抵抗に "+V1+" Vの電圧を加えたとき、この抵抗を流れる電流は。",
+   exp:"I＝V/R＝"+V1+"/"+R1+"＝"+fmt(I1)+" A",ans:I1,dis:[I1*10,I1/10,R1/V1,V1],unit:"A"}},
+series:function(lv){
+  if(lv===2){var rs=pick([[10,20,30],[15,25,60],[10,40,50]]),s2=rs[0]+rs[1]+rs[2],V2=pick([30,45,90]),I2=V2/s2;
+   return {q:rs[0]+" Ω、"+rs[1]+" Ω、"+rs[2]+" Ωの抵抗を直列に接続し、"+V2+" Vの電源をつないだ。回路を流れる電流は。",
+    exp:"R合＝"+s2+" Ω、I＝"+V2+"/"+s2+"＝"+fmt(I2)+" A",ans:I2,
+    dis:[V2/rs[0],s2/V2,V2/(rs[0]+rs[1]),I2*10],unit:"A"}}
+  var rs1=pick([[10,20,30],[20,30,40],[10,40,50]]),s1=rs1[0]+rs1[1]+rs1[2],Vv=s1*pick([1,2]),Iv=Vv/s1;
+  return {q:rs1[0]+" Ω、"+rs1[1]+" Ω、"+rs1[2]+" Ωの抵抗を直列に接続し、"+Vv+" Vの電源をつないだ。回路を流れる電流は。",
+   exp:"R合＝"+s1+" Ω、I＝"+Vv+"/"+s1+"＝"+fmt(Iv)+" A",ans:Iv,
+   dis:[Vv/rs1[0],s1/Vv,Vv/(rs1[0]+rs1[1]),Iv*10],unit:"A"}},
+parallel:function(lv){
+  if(lv===2){var p=pick([[10,20,20],[30,30,30],[20,20,40],[50,50,25]]);
+   var R=1/(1/p[0]+1/p[1]+1/p[2]);
+   return {q:p[0]+" Ω、"+p[1]+" Ω、"+p[2]+" Ωの抵抗を並列に接続したときの合成抵抗は。",
+    exp:"1/R＝1/"+p[0]+"＋1/"+p[1]+"＋1/"+p[2]+" → R＝"+fmt(R)+" Ω",ans:R,
+    dis:[p[0]+p[1]+p[2],(p[0]+p[1]+p[2])/3,Math.min(p[0],p[1],p[2]),1/p[0]+1/p[1]+1/p[2]],unit:"Ω"}}
+  var q=pick([[10,40],[20,30],[20,60],[40,60],[10,15],[30,70]]),R1=q[0]*q[1]/(q[0]+q[1]);
+  return {q:q[0]+" Ωと "+q[1]+" Ωの抵抗を並列に接続したときの合成抵抗は。",
+   exp:"R＝"+q[0]+"×"+q[1]+"/("+q[0]+"＋"+q[1]+")＝"+fmt(R1)+" Ω",ans:R1,
+   dis:[q[0]+q[1],(q[0]+q[1])/2,Math.min(q[0],q[1]),1/q[0]+1/q[1]],unit:"Ω"}},
+divi:function(lv){
+  if(lv===2){var c=pick([{p:[2,3],Is:[10,15,20]},{p:[3,7],Is:[10,20]},{p:[4,6],Is:[15,20]},{p:[5,15],Is:[20]}]);
+   var I0=pick(c.Is),I1=I0*c.p[1]/(c.p[0]+c.p[1]);
+   return {q:c.p[0]+" Ωと "+c.p[1]+" Ωの抵抗を並列に接続し、全体に "+I0+" Aの電流を流した。"+c.p[0]+" Ωを流れる電流は。",
+    exp:"I1＝I×R2/(R1＋R2)＝"+I0+"×"+c.p[1]+"/"+(c.p[0]+c.p[1])+"＝"+fmt(I1)+" A",ans:I1,
+    dis:[I0*c.p[0]/(c.p[0]+c.p[1]),I0,I0-I1,I1*2],unit:"A"}}
+  var p2a=pick([[2,3],[3,7],[2,8],[3,2],[4,6],[6,4]]),J=10*p2a[1]/(p2a[0]+p2a[1]);
+  return {q:p2a[0]+" Ωと "+p2a[1]+" Ωの抵抗を並列に接続し、全体に 10 Aの電流を流した。"+p2a[0]+" Ωを流れる電流は。",
+   exp:"I1＝10×"+p2a[1]+"/("+p2a[0]+"＋"+p2a[1]+")＝"+fmt(J)+" A（小さい抵抗に多く流れる）",ans:J,
+   dis:[10*p2a[0]/(p2a[0]+p2a[1]),10,10-J,J*2],unit:"A"}},
+battery:function(lv){
+  if(lv===2){var c=pick([{E:12,r:1,R:7},{E:9,r:0.5,R:4},{E:12,r:2,R:10},{E:9,r:1,R:8}]);
+   var I=c.E/(c.r+c.R),V=c.E-I*c.r;
+   return {q:"起電力 "+c.E+" V、内部抵抗 "+c.r+" Ωの電池に "+c.R+" Ωの抵抗をつないだ。電池の端子電圧は。",
+    exp:"I＝"+c.E+"/("+c.r+"＋"+c.R+")＝"+fmt(I)+" A、V＝E−Ir＝"+fmt(V)+" V",ans:V,
+    dis:[c.E,c.E+I*c.r,I*c.r,c.E/c.R],unit:"V"}}
+  var c1=pick([{E:12,r:0.5,R:5.5},{E:12,r:1,R:5},{E:24,r:1,R:11},{E:24,r:0.5,R:11.5}]);
+  var I1=c1.E/(c1.r+c1.R),V1=c1.E-I1*c1.r;
+  return {q:"起電力 "+c1.E+" V、内部抵抗 "+c1.r+" Ωの電池に "+c1.R+" Ωの抵抗をつないだ。電池の端子電圧は。",
+   exp:"I＝"+c1.E+"/("+c1.r+"＋"+c1.R+")＝"+fmt(I1)+" A、V＝E−Ir＝"+fmt(V1)+" V",ans:V1,
+   dis:[c1.E,c1.E+I1*c1.r,I1*c1.r,c1.E/c1.R],unit:"V"}},
+potential:function(lv){
+  if(lv===2){var c=pick([{VA:12,R:[10,20],I:0.1},{VA:24,R:[30,50],I:0.2},{VA:12,R:[15,45],I:0.2},{VA:24,R:[20,40],I:0.15}]);
+   var Rs=c.R[0]+c.R[1],VB=c.VA-c.I*Rs;
+   return {q:"点Aの電位は +"+c.VA+" Vである。点Aから "+c.R[0]+" Ωと "+c.R[1]+" Ωの抵抗を直列に通って "+c.I+" Aの電流が点Bへ流れている。点Bの電位は。",
+    exp:"VB＝VA−I(R1＋R2)＝"+c.VA+"−"+c.I+"×"+Rs+"＝"+fmt(VB)+" V",ans:VB,
+    dis:[c.VA,c.VA+c.I*Rs,c.I*Rs,-c.I*Rs],unit:"V"}}
+  var d=pick([{VA:12,R:20,I:0.1},{VA:24,R:50,I:0.3},{VA:24,R:30,I:0.2},{VA:12,R:50,I:0.2},{VA:24,R:20,I:0.1}]);
+  var VB1=d.VA-d.I*d.R;
+  return {q:"点Aの電位は +"+d.VA+" Vである。点Aから "+d.R+" Ωの抵抗を通って "+d.I+" Aの電流が点Bへ流れている。点Bの電位は。",
+   exp:"電流の向きに電位は下がる。VB＝"+d.VA+"−"+d.I+"×"+d.R+"＝"+fmt(VB1)+" V",ans:VB1,
+   dis:[d.VA,d.VA+d.I*d.R,d.I*d.R,-d.I*d.R],unit:"V"}},
+bridge:function(lv){
+  if(lv===2){var c=pick([{R1:100,R2:200,Rx:150},{R1:200,R2:300,Rx:150},{R1:100,R2:400,Rx:200}]);
+   var R3=c.R1*c.Rx/c.R2;
+   return {q:"ホイートストンブリッジ（一方の経路に R1、R2 を直列に、他方の経路に R3、Rx を直列に接続し、両経路の中点間に検流計をつないだ回路）が平衡状態にある。R1＝"+c.R1+" Ω、R2＝"+c.R2+" Ω、Rx＝"+c.Rx+" Ωのとき、R3は。",
+    exp:"平衡条件 R1/R2＝R3/Rx → R3＝R1Rx/R2＝"+fmt(R3)+" Ω",ans:R3,
+    dis:[c.R2*c.Rx/c.R1,c.Rx,c.R2,c.R2*c.Rx/(c.R1+c.Rx)],unit:"Ω"}}
+  var R1b=pick([100,200]),R2b=pick([200,300,400]),R3b=pick([50,100]),Rxb=R2b*R3b/R1b;
+  return {q:"ホイートストンブリッジ（一方の経路に R1、R2 を直列に、他方の経路に R3、Rx を直列に接続し、両経路の中点間に検流計をつないだ回路）が平衡状態にある。R1＝"+R1b+" Ω、R2＝"+R2b+" Ω、R3＝"+R3b+" Ωのとき、未知抵抗 Rxは。",
+   exp:"平衡条件 R1/R2＝R3/Rx → Rx＝R2R3/R1＝"+fmt(Rxb)+" Ω",ans:Rxb,
+   dis:[R1b*R3b/R2b,R3b,R2b,R2b*R3b/(R1b+R3b)],unit:"Ω"}},
+power:function(lv){
+  if(lv===2){var c=pick([{I:2,P:200},{I:3,P:90},{I:5,P:500},{I:2,P:50},{I:4,P:80}]);
+   var R=c.P/(c.I*c.I);
+   return {q:"ある抵抗に "+c.I+" Aの電流を流したところ、消費電力は "+c.P+" Wであった。この抵抗の値は。",
+    exp:"P＝I²R → R＝P/I²＝"+c.P+"/"+c.I+"²＝"+fmt(R)+" Ω",ans:R,
+    dis:[c.P/c.I,c.P*c.I,c.I*c.I,c.P/(c.I*c.I)*10],unit:"Ω"}}
+  var I=pick([2,3,5]),Rp=pick([10,20,50]),P=I*I*Rp;
+  return {q:I+" Aの電流を "+Rp+" Ωの抵抗に流したとき、この抵抗の消費電力は。",
+   exp:"P＝I²R＝"+I+"²×"+Rp+"＝"+fmt(P)+" W",ans:P,
+   dis:[I*Rp,I*I,I*Rp*10,I*I+Rp],unit:"W"}},
+match:function(lv){
+  if(lv===2){var c=pick([{E:12,r:4},{E:24,r:6},{E:10,r:2},{E:6,r:3}]);
+   var P=c.E*c.E/(4*c.r);
+   return {q:"起電力 "+c.E+" V、内部抵抗 "+c.r+" Ωの直流電源に、最大電力を得る条件で負荷をつないだ。負荷が受け取る最大電力は。",
+    exp:"Pmax＝E²/4r＝"+c.E+"²/(4×"+c.r+")＝"+fmt(P)+" W",ans:P,
+    dis:[c.E*c.E/c.r,c.E*c.E/(2*c.r),c.E*c.r,c.E],unit:"W"}}
+  var r=pick([2,4,6,8,10]);
+  return {q:"内部抵抗 "+r+" Ωの直流電源から最大の電力を取り出したい。このときの負荷抵抗は。",
+   exp:"最大出力の条件: 負荷抵抗＝内部抵抗＝"+r+" Ω",ans:r,
+   dis:[r*2,r/2,r+3,r*5],unit:"Ω"}},
+respower:function(lv){
+  if(lv===2){var V=pick([100,200]),P=pick([500,1000,1500,2000]),I=P/V;
+   return {q:"定格 "+V+" V・"+P+" Wの電熱器を定格電圧で使うとき、流れる電流は。",
+    exp:"I＝P/V＝"+P+"/"+V+"＝"+fmt(I)+" A",ans:I,
+    dis:[V/P,P/V/10,V,P/V*2],unit:"A"}}
+  var V1=pick([100,200]),P1=pick([100,500,1000,2000,4000]),R1v=V1*V1/P1;
+  return {q:"定格 "+V1+" V・"+P1+" Wの電熱器の発熱体の抵抗値は。",
+   exp:"R＝V²/P＝"+V1+"²/"+P1+"＝"+fmt(R1v)+" Ω",ans:R1v,
+   dis:[R1v*10,1/R1v,V1,P1,R1v+10],unit:"Ω"}},
+vdiv:function(lv){
+  if(lv===2){var c=pick([{V:12,R:[2,3,7]},{V:24,R:[4,6,14]},{V:18,R:[3,6,9]}]);
+   var sum=c.R[0]+c.R[1]+c.R[2],V2=c.V*c.R[1]/sum;
+   return {q:c.R[0]+" Ω、"+c.R[1]+" Ω、"+c.R[2]+" Ωの抵抗を直列に接続し、"+c.V+" Vの電源をつないだ。"+c.R[1]+" Ωの抵抗の両端の電圧は。",
+    exp:"R合＝"+sum+" Ω、I＝"+c.V+"/"+sum+"＝"+fmt(c.V/sum)+" A、V2＝I×"+c.R[1]+"＝"+fmt(V2)+" V",ans:V2,
+    dis:[c.V*c.R[0]/sum,c.V,c.V*c.R[1]/c.R[0],V2*2],unit:"V"}}
+  var d=pick([{R1:1,R2:2,V:6},{R1:2,R2:4,V:12},{R1:1,R2:4,V:10},{R1:2,R2:3,V:10},{R1:1,R2:3,V:8}]);
+  var V2d=d.V*d.R2/(d.R1+d.R2);
+  return {q:d.R1+" Ωと "+d.R2+" Ωの抵抗を直列に接続し、"+d.V+" Vの電源をつないだ。"+d.R2+" Ωの抵抗の両端の電圧は。",
+   exp:"I＝"+d.V+"/"+(d.R1+d.R2)+"＝"+fmt(d.V/(d.R1+d.R2))+" A、V2＝I×"+d.R2+"＝"+fmt(V2d)+" V",ans:V2d,
+   dis:[d.V*d.R1/(d.R1+d.R2),d.V,d.V*d.R2/d.R1,V2d*2],unit:"V"}},
+bil:function(lv){
+  if(lv===2){
+    var B=pick([0.5,1]),I=pick([10,20]),L=pick([0.5,1]),th=pick([30,45,60]);
+    var ii=[30,45,60].indexOf(th);
+    var s=[0.5,0.71,0.87][ii],cv=[0.87,0.71,0.5][ii];
+    var F=B*I*L*s;
+    return {q:"磁束密度 "+B+" T の一様磁界中に長さ "+L+" mの導線がある。"+I+" Aの電流を流し、導線と磁界のなす角が "+th+"°のとき、導線に働く力は。（sin30°＝0.5、sin45°＝0.71、sin60°＝0.87 として計算すること）",
+      ans:F,dis:[B*I*L,B*I*L*cv,B*I,B*I*L*2],unit:"N",
+      exp:"F＝BILsinθ＝"+B+"×"+I+"×"+L+"×sin"+th+"°＝"+fmt(F)+" N"}
+  }
+  var B1=pick([0.5,2]),I1=pick([5,10,20]),L1=pick([0.2,0.5,1]);
+  var F1=B1*I1*L1;
+  return {q:"磁束密度 "+B1+" T の一様磁界中に、磁界に垂直な長さ "+L1+" mの導線がある。導線に "+I1+" Aの電流を流したとき、導線に働く力は。",
+    ans:F1,dis:[B1*I1,B1*L1,I1*L1,F1*2],unit:"N",
+    exp:"F＝BIL＝"+B1+"×"+I1+"×"+L1+"＝"+fmt(F1)+" N"}},
+fleming:function(lv){
+  if(lv===2){
+    var c3=pick([
+      {v:4,B:0.8,f:"5.12",d:["1.6×10⁻¹³ N","3.2×10⁻¹³ N","5.12×10⁻¹² N","0.8×10⁻¹³ N"]},
+      {v:2,B:0.5,f:"1.6",d:["3.2×10⁻¹³ N","5.12×10⁻¹³ N","1.6×10⁻¹² N","0.8×10⁻¹³ N"]},
+      {v:5,B:0.4,f:"3.2",d:["1.6×10⁻¹³ N","5.12×10⁻¹³ N","3.2×10⁻¹² N","0.8×10⁻¹³ N"]}
+    ]);
+    var ch2=shuffle([c3.f+"×10⁻¹³ N"].concat(c3.d));
+    return {q:"電子（電荷の大きさ e＝1.6×10⁻¹⁹ C）が速度 "+c3.v+"×10⁶ m/s で、磁束密度 "+c3.B+" T の一様磁界に垂直に入射して運動している。電子に働くローレンツ力の大きさは。",
+      ch:ch2,a:ch2.indexOf(c3.f+"×10⁻¹³ N"),
+      exp:"F＝qvB＝1.6×10⁻¹⁹×"+c3.v+"×10⁶×"+c3.B+"＝"+c3.f+"×10⁻¹³ N"}
+  }
+  var f2=pick(["上","下","紙面の手前","紙面の奥"]);
+  var ans2={上:"紙面の手前",下:"紙面の奥","紙面の手前":"下","紙面の奥":"上"}[f2];
+  var ch3=shuffle(["上","下","紙面の手前","紙面の奥","電流と同じ向き"]);
+  return {q:"一様磁界中の導線に、紙面の右向きの電流が流れている。磁界の向きが紙面の「"+f2+"」であるとき、導線に働く電磁力の向きは。",
+    ch:ch3,a:ch3.indexOf(ans2),
+    exp:"フレミング左手（人差し指＝磁界、中指＝電流、親指＝力）で組むと、力の向きは「"+ans2+"」"}},
+wire:function(lv){
+  if(lv===2){
+    var w=pick([{a:10,b:10,d:0.1},{a:10,b:20,d:0.5},{a:5,b:10,d:0.1},{a:20,b:20,d:0.5}]);
+    var F2=0.2*w.a*w.b/w.d;
+    return {q:"間隔 "+w.d+" m の2本の平行導線に、それぞれ "+w.a+" A、"+w.b+" A の電流が同じ向きに流れている。導線 1 m あたりに働く力は。",
+      ans:F2,dis:[0.2*w.a*w.a/w.d,2*w.a*w.b/w.d,0.2*w.a*w.b*w.d,w.a*w.b/w.d],unit:"μN/m",
+      exp:"F/l＝μ0I1I2/2πd＝2×10⁻⁷×"+w.a+"×"+w.b+"/"+w.d+"＝"+fmt(F2)+" μN/m（同じ向きは引き合う）"}
+  }
+  var I2=pick([10,20,50]),d2=pick([0.5,1,2]);
+  var B2=0.2*I2/d2;
+  return {q:"真空中の無限に長い直線導体に "+I2+" A の電流が流れている。導体から "+d2+" m 離れた点における磁束密度は。",
+    ans:B2,dis:[0.2*I2*d2,0.4*I2/d2,I2/d2,0.2*d2/I2],unit:"μT",
+    exp:"B＝μ0I/2πd＝2×10⁻⁷×"+I2+"/"+d2+"＝"+fmt(B2)+" μT"}},
+flux:function(lv){
+  if(lv===2){
+    var c4=pick([{N:100,B:0.2,A:0.1,t:0.02},{N:200,B:0.1,A:0.1,t:0.04},{N:100,B:0.5,A:0.2,t:0.05},{N:50,B:0.1,A:0.2,t:0.01}]);
+    var dP=c4.B*c4.A,e4=c4.N*dP/c4.t;
+    return {q:"磁束密度 "+c4.B+" T の一様磁界中に、コイル面が磁界に対して垂直になるように置かれた面積 "+c4.A+" m² の "+c4.N+" 巻のコイルがある。磁界が "+c4.t+" s でゼロまで一様に減少したとき、コイルに生じる誘導起電力の大きさは。",
+      ans:e4,dis:[c4.N*dP*c4.t,dP/c4.t,e4*2,e4/2],unit:"V",
+      exp:"ΔΦ＝BA＝"+fmt(dP)+" Wb、e＝NΔΦ/Δt＝"+c4.N+"×"+fmt(dP)+"/"+c4.t+"＝"+fmt(e4)+" V"}
+  }
+  var B3=pick([0.2,0.5,1.2]),A3=pick([0.1,0.2,0.5]);
+  var P3=B3*A3;
+  return {q:"磁束密度 "+B3+" T の一様磁界に、磁界に垂直な "+A3+" m² の面がある。この面を貫く磁束は。",
+    ans:P3,dis:[B3+A3,B3/A3,B3*A3*2,B3*A3/2],unit:"Wb",
+    exp:"Φ＝BA＝"+B3+"×"+A3+"＝"+fmt(P3)+" Wb"}},
+induct:function(lv){
+  if(lv===2){
+    var L4=pick([0.5,2,4]),I4=pick([1,2,3]);
+    var W=L4*I4*I4/2;
+    return {q:"自己インダクタンス "+L4+" H のコイルに "+I4+" A の電流が流れている。コイルに蓄えられるエネルギーは。",
+      ans:W,dis:[L4*I4*I4,L4*I4/2,L4*I4*I4/4,L4+I4],unit:"J",
+      exp:"W＝LI²/2＝"+L4+"×"+I4+"²/2＝"+fmt(W)+" J"}
+  }
+  var L5=pick([0.1,0.2,0.5,2]),di=pick([2,5]),dt=pick([0.01,0.02,0.05,0.1]);
+  var e5=L5*di/dt;
+  return {q:"自己インダクタンス "+L5+" H のコイルの電流が "+dt+" s 間で 0 から "+di+" A まで一様に増加した。コイルに生じる自己誘導起電力の大きさは。",
+    ans:e5,dis:[L5*di*dt,L5*dt/di,di*dt/L5,e5*2],unit:"V",
+    exp:"e＝L·Δi/Δt＝"+L5+"×"+di+"/"+dt+"＝"+fmt(e5)+" V"}},
+coulomb:function(lv){
+  if(lv===2){
+    var ds=pick([[0.2,0.1],[0.1,0.2],[0.3,0.2],[0.25,0.1],[0.2,0.25]]);
+    var before=ds[0],after=ds[1],ratio=before/after,forceRatio=ratio*ratio;
+    return {q:"真空中にある二つの点電荷の電荷量を保ったまま、間隔を "+before+" m から "+after+" m に変えた。変更後の力の大きさは変更前の何倍か。",
+      ans:forceRatio,dis:[ratio,1/ratio,1/forceRatio,1],unit:"倍",
+      exp:"力は距離の二乗に反比例。F後/F前＝(r前/r後)²＝("+before+"/"+after+")²＝"+fmt(forceRatio)+" 倍"}
+  }
+  var c=pick([[2,7,0.3],[3,5,0.3],[4,5,0.25],[6,7,0.2],[5,8,0.3]]);
+  var Q1=c[0],Q2=c[1],r=c[2],r2=r*r;
+  var product=0.009*Q1*Q2,F=product/r2;
+  return {q:"真空中で、電荷量がそれぞれ +"+Q1+" μC と +"+Q2+" μC の二つの点電荷が "+r+" m 離れている。点電荷間に働く力の大きさは。（クーロンの法則の比例定数は 9×10⁹ N・m²/C²）",
+    ans:F,dis:[product/r,product*r2,0.009*Q1/r2,F*10],unit:"N",
+    exp:"F＝kQ1Q2/r²＝9×10⁻³×"+Q1+"×"+Q2+"/"+r+"²＝"+fmt(F)+" N"}},
+cser:function(lv){
+  var series=(lv===2);
+  var pair=series?pick([[2,6],[3,6],[4,12],[6,12],[6,18]]):pick([[2,3],[3,6],[4,12],[5,10],[6,8]]);
+  var C1=pair[0],C2=pair[1],sum=C1+C2,product=C1*C2;
+  var C=series?product/sum:sum;
+  return {q:C1+" μF と "+C2+" μF のコンデンサを"+(series?"直列":"並列")+"に接続したとき、合成静電容量は。",
+    ans:C,dis:[series?sum:product/sum,sum/2,product,C1],unit:"μF",
+    exp:series?"1/C合＝1/C1＋1/C2 → C合＝C1C2/(C1＋C2)＝"+C1+"×"+C2+"/("+C1+"＋"+C2+")＝"+fmt(C)+" μF":"C合＝C1＋C2＝"+C1+"＋"+C2+"＝"+fmt(C)+" μF"}},
+charge:function(lv){
+  if(lv===2){
+    var c2=pick([[2,6,12],[3,6,15],[4,12,20],[6,12,24],[6,18,30]]);
+    var C1=c2[0],C2=c2[1],V=c2[2],C=C1*C2/(C1+C2),Q=C*V;
+    return {q:"初めに帯電していない "+C1+" μF と "+C2+" μF のコンデンサを直列に接続し、全体に "+V+" V の直流電圧を加えた。充電後、各コンデンサに蓄えられる電荷の大きさは。",
+      ans:Q,dis:[C1*V,C2*V,V/C,C/V],unit:"μC",
+      exp:"C合＝C1C2/(C1＋C2)＝"+fmt(C)+" μF、直列なので各コンデンサの電荷は等しく Q＝C合V＝"+fmt(C)+"×"+V+"＝"+fmt(Q)+" μC"}
+  }
+  var d=pick([[2,12],[4,15],[6,20],[8,24],[10,30]]);
+  var Cd=d[0],Vd=d[1],Qd=Cd*Vd;
+  return {q:Cd+" μF のコンデンサに "+Vd+" V の直流電圧を加えた。充電後に蓄えられる電荷の大きさは。",
+    ans:Qd,dis:[Vd/Cd,Cd/Vd,Cd+Vd,Qd/2],unit:"μC",
+    exp:"Q＝CV＝"+Cd+"×"+Vd+"＝"+fmt(Qd)+" μC"}},
+cenergy:function(lv){
+  if(lv===2){
+    var c3=pick([[3,6,100,"直列"],[4,12,150,"直列"],[6,12,200,"直列"],[2,6,50,"並列"],[4,8,100,"並列"],[5,15,120,"並列"]]);
+    var C1=c3[0],C2=c3[1],V=c3[2],series=(c3[3]==="直列");
+    var C=series?C1*C2/(C1+C2):C1+C2;
+    var W=C*V*V/2000;
+    return {q:"初めに帯電していない "+C1+" μF と "+C2+" μF のコンデンサを"+c3[3]+"に接続し、全体に "+V+" V の直流電圧を加えた。充電後、二つのコンデンサに蓄えられるエネルギーの合計は。",
+      ans:W,dis:[W*2,W/2,C*V/1000,C1*V*V/2000],unit:"mJ",
+      exp:"C合＝"+(series?"C1C2/(C1＋C2)＝"+C1+"×"+C2+"/("+C1+"＋"+C2+")":"C1＋C2＝"+C1+"＋"+C2)+"＝"+fmt(C)+" μF、W＝C合V²/2＝"+fmt(C)+"×"+V+"²/2000＝"+fmt(W)+" mJ"}
+  }
+  var d2=pick([[2,50],[4,75],[6,100],[8,150],[20,200]]);
+  var Cd2=d2[0],Vd2=d2[1],Wd2=Cd2*Vd2*Vd2/2000;
+  return {q:Cd2+" μF のコンデンサに "+Vd2+" V の直流電圧を加えた。充電後に蓄えられるエネルギーは。",
+    ans:Wd2,dis:[Wd2*2,Wd2/2,Cd2*Vd2/1000,Wd2*10],unit:"mJ",
+    exp:"W＝CV²/2＝"+Cd2+"×"+Vd2+"²/2000＝"+fmt(Wd2)+" mJ"}}
+};
+var lastQ={};
+function serveType(t,lv){
+  if(t.gen&&GEN[t.gen]){
+    var g,c,tries=0;
+    do{g=GEN[t.gen](lv);c=(g.ch)?null:mkch(g.ans,g.dis,g.unit);tries++}while(tries<5&&lastQ[t.id]===g.q);
+    lastQ[t.id]=g.q;
+    if(g.ch)return {q:g.q,ch:g.ch,a:g.a,exp:g.exp};
+    return {q:g.q,ch:c.ch,a:c.a,exp:g.exp};
+  }
+  return t.q?{q:t.q,ch:t.ch,a:t.a,exp:t.exp}:null;
+}
+
+/* ---------- 電卓 ---------- */
+var calc={cur:"0",acc:null,op:null,fresh:false,raw:null};
+function fmtC(x){if(!isFinite(x))return "Error";var s=String(Math.round(x*1e9)/1e9);return s.length>13?String(Number(x).toExponential(6)):s}
+function cShow(v){document.getElementById("calcDisp").textContent=v!==undefined?fmtC(v):calc.cur}
+function cDigit(d){
+  if(calc.fresh){calc.cur="0";calc.fresh=false}
+  calc.raw=null;
+  if(d==="."&&calc.cur.indexOf(".")>=0)return;
+  if(calc.cur==="0"&&d!==".")calc.cur=d;else calc.cur+=d;
+  cShow();
+}
+function cApply(a,b,op){if(op==="+")return a+b;if(op==="-")return a-b;if(op==="×")return a*b;return b===0?NaN:a/b}
+function cOp(o){
+  var v=(calc.raw!==null)?calc.raw:parseFloat(calc.cur);
+  if(calc.acc===null){calc.acc=v}
+  else if(calc.op!==null&&!calc.fresh){calc.acc=cApply(calc.acc,v,calc.op)}
+  calc.raw=null;
+  calc.op=o;calc.fresh=true;cShow(calc.acc);
+}
+function cEq(){
+  if(calc.op===null||calc.acc===null)return;
+  var v=(calc.raw!==null)?calc.raw:parseFloat(calc.cur);
+  var r=cApply(calc.acc,v,calc.op);
+  if(!isFinite(r)){calc.cur="Error";calc.raw=null;calc.acc=null;calc.op=null;calc.fresh=true;cShow();return}
+  calc.raw=r;
+  calc.cur=String(Math.round(r*1e12)/1e12);calc.acc=null;calc.op=null;calc.fresh=true;cShow();
+}
+function cClear(){calc={cur:"0",acc:null,op:null,fresh:false,raw:null};cShow()}
+function cBack(){if(calc.fresh)return;calc.cur=calc.cur.length>1?calc.cur.slice(0,-1):"0";if(calc.cur==="-"||calc.cur==="")calc.cur="0";cShow()}
+function cSign(){
+  if(calc.raw!==null){ // =の直後は内部値ベース（丸めで 0 表示でも符号を反転できる）
+    calc.raw=-calc.raw;
+    calc.cur=String(Math.round(calc.raw*1e12)/1e12);
+    if(parseFloat(calc.cur)===0&&calc.raw!==0)calc.cur=calc.raw<0?"-0":"0";
+    cShow();return;
+  }
+  if(calc.cur==="0"||calc.cur===""||calc.cur==="-")return;
+  calc.cur=calc.cur.charAt(0)==="-"?calc.cur.slice(1):"-"+calc.cur;cShow();
+}
+document.getElementById("btnCalc").onclick=function(){cClear();document.getElementById("calcSheet").classList.remove("hidden")};
+document.getElementById("btnCalcClose").onclick=function(){document.getElementById("calcSheet").classList.add("hidden")};
+(function(){
+  var keys=[["C",cClear,""],["⌫",cBack,""],["±",cSign,""],["÷",function(){cOp("÷")},"op"],
+    ["7",function(){cDigit("7")},""],["8",function(){cDigit("8")},""],["9",function(){cDigit("9")},""],["×",function(){cOp("×")},"op"],
+    ["4",function(){cDigit("4")},""],["5",function(){cDigit("5")},""],["6",function(){cDigit("6")},""],["−",function(){cOp("-")},"op"],
+    ["1",function(){cDigit("1")},""],["2",function(){cDigit("2")},""],["3",function(){cDigit("3")},""],["＋",function(){cOp("+")},"op"],
+    ["0",function(){cDigit("0")},""],[".",function(){cDigit(".")},""],["=",cEq,"eq"]];
+  var g=document.getElementById("calcKeys");
+  keys.forEach(function(k){var b=document.createElement("button");b.textContent=k[0];if(k[2])b.className=k[2];b.onclick=k[1];g.appendChild(b)});
+})();
+
+/* ---------- 型カードの覗き見 ---------- */
+document.getElementById("btnPeek").onclick=function(){
+  var t=sess[idx].t;
+  document.getElementById("cardName").textContent=t.name;
+  document.getElementById("cardBody").textContent=t.card;
+  document.getElementById("typeCard").classList.remove("hidden");
+};
+document.getElementById("btnCardClose").onclick=function(){document.getElementById("typeCard").classList.add("hidden")};
+
+/* ---------- セッション ---------- */
+function dueTypes(){return T.filter(function(t){var s=S.stT[t.id];return s&&!s.m&&s.due&&s.due<=today()})}
+function newCount(){
+  var used=0,unseen=0,d=today();
+  T.forEach(function(t){
+    var s=S.stT[t.id];
+    if(!s)unseen++;
+    else if(s.born===d)used++;
+  });
+  return Math.max(0,Math.min(S.set.newPerDay-used,unseen));
+}
+function newTypes(n){var out=[];for(var i=0;i<T.length&&out.length<n;i++){if(!S.stT[T[i].id])out.push({t:T[i],isNew:true})}return out}
+var sess=[],idx=0,correct=0,wrongT={},qStart=0,answered=false,sessMode="sched";
+function show(id){["vHome","vQuiz","vEnd","vWeak"].forEach(function(v){document.getElementById(v).classList.toggle("hidden",v!==id)})}
+
+function renderHome(){
+  document.getElementById("dueN").textContent=dueTypes().length;
+  document.getElementById("newN").textContent=newCount();
+  var tot=T.length,seen=Object.keys(S.stT).length;
+  var lv2=T.filter(function(t){return S.stT[t.id]&&S.stT[t.id].lv===2}).length;
+  var mst=T.filter(function(t){return S.stT[t.id]&&S.stT[t.id].m}).length;
+  var byU={};
+  T.forEach(function(t){var s=S.stT[t.id];if(s&&s.x)byU[t.unit]=(byU[t.unit]||0)+s.x});
+  var top=Object.keys(byU).sort(function(a,b){return byU[b]-byU[a]}).slice(0,3);
+  var html="<div class='sub'>進捗（型 "+tot+"種）</div><table><tr><th>開始済</th><td class='num'>"+seen+"</td><th>標準到達</th><td class='num'>"+lv2+"</td><th>修了</th><td class='num'>"+mst+"</td></tr></table><div class='bar'><div style='width:"+(tot?mst/tot*100:0)+"%'></div></div>";
+  if(top.length){html+="<div class='sub' style='margin-top:10px'>✕が多い単元</div><table>";top.forEach(function(u){html+="<tr><td>"+um(u).s+"・"+um(u).n+"</td><td class='num'>✕ "+byU[u]+"</td></tr>"});html+="</table>"}
+  document.getElementById("progressCard").innerHTML=html;
+  var msg="";
+  if(seen===0){msg="「はじめる」を押すと最初の型が始まります。"}
+  else{
+    var nd=null;
+    T.forEach(function(t){var s=S.stT[t.id];if(s&&!s.m&&s.due&&(!nd||s.due<nd))nd=s.due});
+    if(dueTypes().length===0&&newCount()===0){msg=nd?"次の自動再出題は "+nd+"。それまで自由練習で回してください。":(mst===tot?"全型修了！自由練習で維持してください（Phase 2 で型を追加投入します）。":"今日の新規は投入済み。明日また来てください。")}
+  }
+  document.getElementById("homeMsg").textContent=msg;
+  var knownAny=T.some(function(t){return S.stT[t.id]});
+  document.getElementById("btnPractice").classList.toggle("hidden",!knownAny);
+  var selv=String(S.set.newPerDay);
+  var sel=document.getElementById("selNew"),i;
+  for(i=sel.options.length-1;i>=0;i--)if(["5","10","15","20"].indexOf(sel.options[i].value)===-1)sel.remove(i);
+  var has=false;
+  for(i=0;i<sel.options.length;i++)if(sel.options[i].value===selv)has=true;
+  if(!has)sel.add(new Option(selv,selv));
+  sel.value=selv;
+}
+
+document.getElementById("btnStart").onclick=function(){
+  sess=dueTypes().map(function(t){return {t:t,isNew:false}}).concat(newTypes(newCount()));
+  if(!sess.length){document.getElementById("homeMsg").textContent="今日の新規は投入済み・復習もなし。下の「自由練習」で回せます。";return}
+  sessMode="sched";
+  idx=0;correct=0;wrongT={};show("vQuiz");stepItem();
+};
+
+document.getElementById("btnPractice").onclick=function(){
+  var known=T.filter(function(t){return S.stT[t.id]});
+  if(!known.length){document.getElementById("homeMsg").textContent="まず「はじめる」で最初の型を始めてください。";return}
+  sess=shuffle(known.slice()).slice(0,10).map(function(t){return {t:t,isNew:false,practice:true}});
+  sessMode="practice";
+  idx=0;correct=0;wrongT={};show("vQuiz");stepItem();
+};
+
+function stepItem(){
+  var item=sess[idx];
+  document.getElementById("qIdx").textContent=(idx+1)+" / "+sess.length;
+  showQuestion(item);
+}
+
+function showQuestion(item){
+  var t=item.t,isNew=item.isNew;
+  var s=S.stT[t.id],lv=s?s.lv:1;
+  var srv=serveType(t,lv);
+  if(!srv){idx++;if(idx>=sess.length)end();else stepItem();return}
+  document.getElementById("qUnit").textContent=um(t.unit).s+"・"+um(t.unit).n;
+  document.getElementById("qLv").textContent=lv===2?"標準":"基礎";
+  document.getElementById("qLv").className="tag"+(lv===2?" lv2":"");
+  document.getElementById("qNew").classList.toggle("hidden",!isNew);
+  document.getElementById("btnPeek").classList.toggle("hidden",!!isNew); // 初見は覗けない＝自分で考える
+  document.getElementById("qText").textContent=srv.q;
+  document.getElementById("scratch").value="";
+  document.getElementById("planIn").value="";
+  document.getElementById("btnReveal").classList.remove("hidden");
+  var box=document.getElementById("choices");
+  box.className="choices hidden";box.innerHTML="";
+  document.getElementById("result").className="hidden";
+  document.getElementById("planEcho").textContent="";
+  document.getElementById("firstCard").classList.add("hidden");
+  qStart=Date.now();
+  answered=false;
+  document.getElementById("btnReveal").onclick=function(){
+    document.getElementById("btnReveal").classList.add("hidden");
+    box.className="choices";
+    srv.ch.forEach(function(c,i){
+      var b=document.createElement("button");
+      b.className="choice";b.textContent=c;b.onclick=function(){answer(srv,i,item)};
+      box.appendChild(b);
+    });
+  };
+}
+
+function answer(srv,i,item){
+  if(answered)return;
+  answered=true;
+  var t=item.t,btns=document.getElementById("choices");
+  btns.className="choices done";
+  var ok=(i===srv.a);
+  if(ok)correct++;else wrongT[t.id]=(wrongT[t.id]||0)+1;
+  btns.children[srv.a].classList.add("correct");
+  if(!ok)btns.children[i].classList.add("wrong");
+  var j=document.getElementById("judge");
+  j.textContent=ok?"〇 正解":"✕ 不正解";
+  j.style.color=ok?"#22c55e":"#ef4444";
+  var secs=Math.round((Date.now()-qStart)/1000);
+  var s=S.stT[t.id];
+  var meta="型: "+t.name+"・所要 "+secs+"秒";
+  if(s&&s.secN>0)meta+="・この型の平均 "+Math.round(s.secSum/s.secN)+"秒";
+  document.getElementById("qMeta").textContent=meta;
+  if(item.isNew){
+    var fc=document.getElementById("firstCard");
+    fc.innerHTML="<div class='t'>今回の型（これが解法のカード）</div>"+t.card;
+    fc.classList.remove("hidden");
+  }
+  var plan=document.getElementById("planIn").value.trim();
+  document.getElementById("planEcho").textContent=plan?("あなたの方針: "+plan):"";
+  document.getElementById("qExp").textContent="解説: "+srv.exp;
+  var rb=document.getElementById("rateBox");rb.innerHTML="";
+  function mk(r,label,cls){
+    var b=document.createElement("button");
+    b.className=cls;b.textContent=label;b.onclick=function(){rate(t,r,secs,item)};
+    rb.appendChild(b);
+  }
+  var s2=S.stT[t.id],isLv2=s2&&s2.lv===2;
+  if(item.practice){mk("next","次へ","r2")}
+  else if(ok){mk("◎","◎ すぐ解けた（30日後）","r4");mk("◯","◯ 普通（14日後）","r3");mk("△","△ 迷った（7日後）","r2")}
+  else{mk("✕",isLv2?"✕ 次へ（3日後・基礎に戻る）":"✕ 次へ（3日後に類題）","r1")}
+  document.getElementById("result").className="";
+}
+
+function rate(t,r,secs,item){
+  if(item&&item.practice){idx++;if(idx>=sess.length)end();else stepItem();return}
+  var merged=load(); // 保存の瞬間にストレージを再読込（他タブの書き込みを上書きしない）
+  var isNew=!merged.stT[t.id];
+  var s=merged.stT[t.id]||{lv:1,streak:0,due:null,done:0,x:0,m:false,secN:0,secSum:0,born:null};
+  var wasLv2=s.lv===2;
+  if(r==="✕"){s.x++;s.streak=0;if(wasLv2)s.lv=1}
+  else if(r==="△"){}
+  else{s.streak++;if(s.lv===1&&s.streak>=2)s.lv=2}
+  s.done++;
+  s.secN++;s.secSum+=secs;
+  if(wasLv2&&s.streak>=3&&r==="◎")s.m=true; // 昇格した瞬間には修了させない
+  s.due=addDays(IV[r]);
+  if(isNew)s.born=today();
+  merged.stT[t.id]=s;
+  S=merged;
+  // 書き込みはこの1型のキーだけ＝他タブの同時採点と一切衝突しない（新規数は born から導出）
+  localStorage.setItem(keyT(t.id),JSON.stringify(s));
+  idx++;
+  if(idx>=sess.length)end();else stepItem();
+}
+
+function end(){
+  document.getElementById("endStats").textContent=correct+" / "+sess.length;
+  var w=Object.keys(wrongT);
+  document.getElementById("endDetail").textContent=w.length
+    ?(sessMode==="practice"
+       ?"✕を出した型: "+w.map(function(id){return tm(id).name}).join("、")+"（※自由練習は本スケジュールに影響しません）"
+       :"✕を出した型: "+w.map(function(id){return tm(id).name}).join("、")+" → 3日後に数値違いの類題で再出題")
+    :"全部✕なし。すばらしい。";
+  show("vEnd");
+}
+document.getElementById("btnHome").onclick=function(){renderHome();show("vHome")};
+
+document.getElementById("btnWeak").onclick=function(){
+  var html="<div class='sub'>弱点マップ（型ごと）</div><table><tr><th>型</th><th>段階</th><th class='num'>解答</th><th class='num'>✕</th><th class='num'>平均秒</th></tr>";
+  U.forEach(function(u){
+    var ts=T.filter(function(t){return t.unit===u.id});
+    if(!ts.length){html+="<tr><td style='color:#64748b'>"+u.s+"・"+u.n+"</td><td class='num' colspan='4' style='color:#64748b'>未投入</td></tr>";return}
+    html+="<tr><td colspan='5' style='color:#93c5fd;background:#33415588'>"+u.s+"・"+u.n+"</td></tr>";
+    ts.forEach(function(t){
+      var s=S.stT[t.id];
+      var st=s?(s.m?"修了":(s.lv===2?"標準":"基礎")):"–";
+      var av=(s&&s.secN)?Math.round(s.secSum/s.secN):"–";
+      html+="<tr><td>"+t.name+"</td><td>"+st+"</td><td class='num'>"+(s?s.done:0)+"</td><td class='num'>"+(s?s.x:0)+"</td><td class='num'>"+av+"</td></tr>";
+    });
+  });
+  document.getElementById("weakCard").innerHTML=html+"</table>";
+  show("vWeak");
+};
+document.getElementById("btnWeakBack").onclick=function(){renderHome();show("vHome")};
+
+var sel=document.getElementById("selNew");
+sel.value=String(S.set.newPerDay);
+sel.onchange=function(){S.set.newPerDay=parseInt(sel.value,10)||10;writeMeta({newPerDay:S.set.newPerDay})};
+
+document.getElementById("btnExport").onclick=function(){
+  var t=document.getElementById("txData");
+  t.classList.remove("hidden");
+  t.value=JSON.stringify(load());
+  document.getElementById("btnImport").classList.remove("hidden");
+  t.onclick=function(){t.select()};
+};
+document.getElementById("btnImport").onclick=function(){
+  try{
+    var v=JSON.parse(document.getElementById("txData").value);
+    if(!v||!v.stT||typeof v.stT!=="object"||Array.isArray(v.stT)||!v.set||typeof v.set!=="object"||Array.isArray(v.set))throw new Error("bad");
+    var n=normalizeState(v);
+    if(!n)throw new Error("bad");
+    var cur=Object.keys(S.stT).length,imp=Object.keys(n.stT).length;
+    if(cur>0&&!confirm("現在の記録（"+cur+"型）をインポート内容（"+imp+"型）で上書きします。よろしいですか？"))return;
+    S=n;
+    var ks=[],ki;
+    for(ki=0;ki<localStorage.length;ki++){var kk=localStorage.key(ki);if(/^dk3-t-/.test(kk))ks.push(kk)}
+    ks.forEach(function(k){localStorage.removeItem(k)}); // バックアップに無い型は完全に置き換える
+    Object.keys(n.stT).forEach(function(tid){var rec=n.stT[tid];if(!rec.born)rec.born=null;localStorage.setItem(keyT(tid),JSON.stringify(rec))});
+    writeMeta({newPerDay:n.set.newPerDay});
+    localStorage.removeItem(KEY);localStorage.removeItem("dk3-v2");localStorage.removeItem("dk3-v1");
+    location.reload();
+  }catch(e){alert("JSONが読めません。エクスポートした全文を貼り付けてください")}
+};
+document.getElementById("btnReset").onclick=function(){
+  if(confirm("記録を全部消します。よろしいですか？（先にエクスポート推奨）")){
+    var ks=[],i;
+    for(i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(/^dk3-/.test(k))ks.push(k)}
+    ks.forEach(function(k){localStorage.removeItem(k)});
+    location.reload();
+  }
+};
+if("serviceWorker" in navigator&&location.protocol.indexOf("http")===0){
+  navigator.serviceWorker.register("sw.js").catch(function(){});
+}
+renderHome();
+</script>
+</body>
+</html>
