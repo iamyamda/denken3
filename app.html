@@ -31,7 +31,7 @@ button.mini{width:auto;margin:0;padding:6px 12px;font-size:12px;background:#3341
 .judge{font-size:18px;font-weight:700;margin-top:14px}
 .meta{font-size:12px;color:var(--sub);margin-top:8px}
 .planEcho{font-size:13px;color:#93c5fd;margin-top:10px;line-height:1.6}
-.firstCard{background:#172554;border:1px solid #1d4ed8;border-radius:8px;padding:12px;margin-top:12px;font-size:14px;line-height:1.7}
+.firstCard{background:#172554;border:1px solid #1d4ed8;border-radius:8px;padding:12px;margin-top:12px;font-size:14px;line-height:1.7;max-height:38vh;overflow:auto}
 .firstCard .t{font-weight:700;color:#93c5fd;margin-bottom:4px}
 .rate{display:flex;gap:8px}
 .rate button{margin-top:12px;font-size:13px;padding:12px 4px}
@@ -47,12 +47,12 @@ textarea{height:76px;resize:vertical}
 select{font-size:14px;padding:6px;border-radius:6px;background:#334155;color:var(--tx);border:none}
 #typeCard{position:fixed;inset:0;background:rgba(2,6,23,.85);z-index:20;align-items:center;justify-content:center;padding:16px}
 #typeCard:not(.hidden){display:flex}
-#typeCardInner{background:var(--card);border-radius:12px;padding:20px;max-width:480px;width:100%}
-#calcSheet{position:fixed;left:0;right:0;bottom:0;max-width:560px;margin:0 auto;background:var(--card);border-radius:16px 16px 0 0;padding:12px 12px calc(12px + env(safe-area-inset-bottom));z-index:10;box-shadow:0 -8px 30px rgba(0,0,0,.5)}
+#typeCardInner{background:var(--card);border-radius:12px;padding:20px;max-width:480px;width:100%;max-height:80vh;overflow:auto}
+#calcSheet{max-height:100vh;max-height:100dvh;overflow-y:auto;position:fixed;left:0;right:0;bottom:0;max-width:560px;margin:0 auto;background:var(--card);border-radius:16px 16px 0 0;padding:12px 12px calc(12px + env(safe-area-inset-bottom));z-index:10;box-shadow:0 -8px 30px rgba(0,0,0,.5)}
 #calcDisp{background:var(--bg);border-radius:8px;padding:14px 16px;font-size:26px;text-align:right;margin-bottom:8px;font-variant-numeric:tabular-nums;min-height:52px;word-break:break-all}
 .cgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .cgrid button{margin:0;font-size:18px;padding:14px 0}
-.cgrid .op{background:#1d4ed8}.cgrid .eq{background:var(--ok);color:#052e16}
+.cgrid .op{background:#1d4ed8}.cgrid .eq{background:var(--ok);color:#052e16;grid-row:span 2}.cgrid .mem{font-size:13px;padding:14px 0}
 .calcHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
 .calcHead button{width:auto;margin:0;background:none;color:var(--sub);font-size:13px;padding:4px 8px}
 </style>
@@ -60,16 +60,21 @@ select{font-size:14px;padding:6px;border-radius:6px;background:#334155;color:var
 <body>
 <main>
 <h1>電験三種 毎日アプリ</h1>
-<div class="sub">初見は自分で考える → 答え合わせで型を学ぶ → 類題・難度アップで再訪。同じ型は数値違いの類題で再出題。</div>
+<div class="sub">初見は単元導入→講義→確認問題（鉄緑の授業の順）。復習は思い出し練習。翌週テストと3〜5週のらせん再訪。</div>
 
 <div id="vHome">
   <div class="card">
     <div class="sub">今日のセット</div>
-    <div class="big"><span id="dueN">0</span><span class="small"> 復習</span> ＋ <span id="newN">0</span><span class="small"> 新規の型</span></div>
+    <div class="big"><span id="sideN">0</span><span class="small"> 法規</span> ＋ <span id="dueN">0</span><span class="small"> 復習</span> ＋ <span id="newN">0</span><span class="small"> 新規</span> ＋ <span id="fillN">0</span><span class="small"> 練習</span></div>
+    <div class="sub" id="tgtMsg"></div>
     <div class="sub" id="homeMsg"></div>
-    <button class="primary" id="btnStart">はじめる</button>
+    <button class="primary hidden" id="btnResume"></button>
+    <button class="hidden" id="btnRestart">最初からやり直す</button>
+    <button class="primary" id="btnStart">今日の学習を始める（導入→講義→演習）</button>
     <button id="btnPractice" class="hidden">自由練習（スケジュール外・混合10問）</button>
+    <button id="btnWeekly" class="hidden">週テスト（今までの全型から混合・最大10問・点数を記録）</button>
   </div>
+  <div class="card" id="planCard"></div>
   <div class="card" id="progressCard"></div>
 </div>
 
@@ -79,11 +84,16 @@ select{font-size:14px;padding:6px;border-radius:6px;background:#334155;color:var
     <span class="tag" id="qUnit"></span><span class="tag" id="qLv"></span><span class="tag hidden" id="qNew">初見</span>
     <button type="button" id="btnPeek" class="mini" style="float:right">型を見る</button>
     <div class="qtext" id="qText"></div>
-    <div class="sub">ワークスペース（計算・メモはここで。電卓は本番CBTと同じ画面式）</div>
+    <div class="sub">ワークスペース（計算・メモはここで。本番は「四則＋√の電卓＋手元のメモ」なので、これと同じ制約で練習する）</div>
     <textarea id="scratch" placeholder="計算メモ（自由に書く）"></textarea>
     <button id="btnCalc">電卓を開く</button>
     <div class="sub" style="margin-top:10px">方針（任意1行・書くと身に付く）</div>
     <input type="text" id="planIn" placeholder="例: I＝E/(r＋R) を先に出す">
+    <div id="assistRow" style="display:flex;gap:8px;margin-top:10px">
+      <button id="btnHint" class="mini" style="width:auto;margin:0">ヒント</button>
+      <button id="btnGiveUp" class="mini" style="width:auto;margin:0">答えと講義を見る</button>
+    </div>
+    <div class="sub hidden" id="hintBox" style="margin-top:8px;background:var(--bg);border:1px solid #334155;border-radius:8px;padding:10px;font-size:13px;line-height:1.6;color:#93c5fd"></div>
     <button class="primary" id="btnReveal">解答を選ぶ</button>
     <div class="choices hidden" id="choices"></div>
     <div id="result" class="hidden">
@@ -113,19 +123,18 @@ select{font-size:14px;padding:6px;border-radius:6px;background:#334155;color:var
 
 <div class="card">
   <div class="sub" style="margin-bottom:8px">設定・データ</div>
-  <div>新規/日 <select id="selNew"><option>5</option><option>10</option><option>15</option><option>20</option></select>
+  <div>新規/日 <select id="selNew"><option>5</option><option>10</option><option>15</option><option>20</option><option>30</option></select>
   （法規は問題投入後、別枠で毎日5問）</div>
   <button id="btnWeak">弱点マップ</button>
   <button id="btnExport">記録のエクスポート／インポート</button>
   <textarea id="txData" class="hidden" placeholder="エクスポート: 出てきた JSON を全選択コピーして保存。インポート: JSONを貼り付けて下のボタン。"></textarea>
   <button id="btnImport" class="hidden danger">この JSON に置き換える</button>
-  <button id="btnReset" class="danger">記録を全消去</button>
 </div>
 </main>
 
 <div id="calcSheet" class="hidden">
-  <div class="calcHead"><span class="sub">電卓（四則のみ・本番CBTと同じ使い勝手）</span><button id="btnCalcClose">✕ 閉じる</button></div>
-  <div id="calcDisp">0</div>
+  <div class="calcHead"><span class="sub">電卓（Casio DJ-120D系と同じ配置・動作: AC⌫%GT／メモリ左列／00キー／GT累積）</span><button id="btnCalcClose">✕ 閉じる</button></div>
+  <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px"><span id="calcMem" style="min-width:14px;color:#93c5fd;font-size:14px;font-weight:700"></span><div id="calcDisp" style="flex:1">0</div></div>
   <div class="cgrid" id="calcKeys"></div>
 </div>
 
@@ -134,11 +143,13 @@ select{font-size:14px;padding:6px;border-radius:6px;background:#334155;color:var
     <div class="sub">型のカード</div>
     <div style="font-size:17px;font-weight:700;margin:8px 0" id="cardName"></div>
     <div class="exp" id="cardBody"></div>
+    <button class="primary" id="btnCardOk" style="display:none">読んだ → 例題へ</button>
     <button class="primary" id="btnCardClose">閉じる</button>
   </div>
 </div>
 
-<script src="data.js"></script>
+<script src="data.js?v=5"></script>
+<script src="textbook.js?v=1"></script>
 <script>
 "use strict";
 if(typeof DATA==="undefined"){
@@ -149,7 +160,7 @@ var U=DATA.units,T=DATA.types,KEY="dk3-v3";
 function um(id){return U.find(function(u){return u.id===id})}
 function tm(id){return T.find(function(t){return t.id===id})}
 function p2(n){return (n<10?"0":"")+n}
-function defaultState(){return {stT:{},set:{newPerDay:10,learned:{}}}}
+function defaultState(){return {stT:{},set:{newPerDay:20,learned:{},weekly:null}}}
 function validDate(s){
   if(typeof s!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;
   var p=s.split("-");
@@ -186,6 +197,10 @@ function normalizeState(s){ // 外部データ・旧データを必ずv3の形�
   if(lr&&typeof lr==="object")Object.keys(lr).forEach(function(d){
     if(validDate(d))out.set.learned[d]=posInt(lr[d]);
   });
+  var wks=(s.set&&s.set.weekly);
+  if(wks&&typeof wks==="object"&&validDate(wks.date)&&typeof wks.score==="number"&&isFinite(wks.score)&&wks.score>=0&&typeof wks.total==="number"&&isFinite(wks.total)&&wks.total>=1){
+    out.set.weekly={date:wks.date,score:Math.floor(wks.score),total:Math.floor(wks.total)};
+  }
   return out;
 }
 var KEYMETA="dk3-m3";
@@ -231,15 +246,29 @@ function load(){
     var np=Math.floor(Number(meta.newPerDay));
     out.set.newPerDay=(isFinite(np)&&np>=1&&np<=50)?np:10;
   }
+  try{
+    var wk=JSON.parse(localStorage.getItem("dk3-w"));
+    if(wk&&typeof wk==="object"&&!Array.isArray(wk)&&validDate(wk.date)&&typeof wk.score==="number"&&isFinite(wk.score)&&wk.score>=0&&typeof wk.total==="number"&&isFinite(wk.total)&&wk.total>=1){
+      out.set.weekly={date:wk.date,score:Math.floor(wk.score),total:Math.floor(wk.total)};
+    }
+  }catch(e){}
+  if(!out.set.weekly&&meta&&meta.weekly&&typeof meta.weekly==="object"&&validDate(meta.weekly.date)){
+    // 旧版がmeta(dk3-m3)に保存していた週テスト記録の救済 → 新キーに移し替える（数値型のみ）
+    if(typeof meta.weekly.score==="number"&&isFinite(meta.weekly.score)&&meta.weekly.score>=0&&typeof meta.weekly.total==="number"&&isFinite(meta.weekly.total)&&meta.weekly.total>=1){
+      out.set.weekly={date:meta.weekly.date,score:Math.floor(meta.weekly.score),total:Math.floor(meta.weekly.total)};
+      localStorage.setItem("dk3-w",JSON.stringify(out.set.weekly));
+    }
+  }
   return out;
 }
 var S=load();
 window.addEventListener("storage",function(e){
   if(!/^dk3-/.test(e.key||""))return;
   var quizActive=!document.getElementById("vQuiz").classList.contains("hidden");
+  var typeChange=/^dk3-t-/.test(e.key||"")||/^dk3-v/.test(e.key||"");
   S=load();
-  if(quizActive){
-    sess=[];
+  if(quizActive&&sessMode==="sched"&&typeChange){
+    discardConflictedSession();
     show("vHome");
     renderHome();
     alert("別のタブで記録が更新されたため、このセッションを中止しました。ホームからやり直してください。");
@@ -248,7 +277,27 @@ window.addEventListener("storage",function(e){
 function iso(d){return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())}
 function today(){return iso(new Date())}
 function addDays(n){var d=new Date();d.setDate(d.getDate()+n);return iso(d)}
-var IV={"✕":3,"△":7,"◯":14,"◎":30};
+function weekKey(s){
+  var d=new Date(s+"T00:00:00");
+  var day=(d.getDay()+6)%7; // 月曜=0
+  d.setDate(d.getDate()-day);
+  return iso(d);
+}
+var KEYLOG="dk3-log";
+function validLog(l){
+  if(l&&validDate(l.d)&&typeof l.s==="number"&&isFinite(l.s)&&l.s>=0)return {d:l.d,s:Math.floor(l.s)};
+  return null;
+}
+function readLog(){try{return validLog(JSON.parse(localStorage.getItem(KEYLOG)))}catch(e){return null}}
+function touchLog(){
+  var log=readLog(),td=today();
+  if(log&&log.d===td)return;
+  var yd=addDays(-1);
+  var ns=(log&&log.d===yd)?(log.s+1):1;
+  localStorage.setItem(KEYLOG,JSON.stringify({d:td,s:ns}));
+}
+var IV={"✕":7,"△":14,"◯":21,"◎":35};
+var DAILY_MAIN=115,DAILY_SIDE=5; // 1日120問＝鉄緑と同等（2〜3時間）。間隔は塾の週次（✕→翌週テスト、再訪は3〜5週のらせん）
 
 /* ---------- 類題ジェネレータ（数値は毎回変わる。lv1=基礎 / lv2=標準） ---------- */
 function pick(a){return a[Math.floor(Math.random()*a.length)]}
@@ -264,7 +313,7 @@ function mkch(ans,dis,unit){
     if(f2!=="0"&&vals.indexOf(f2)===-1)vals.push(f2);
   }
   var correct=vals[0];shuffle(vals);
-  return {ch:vals.map(function(v){return v+" "+unit}),a:vals.indexOf(correct)}
+  return {ch:vals.map(function(v){return (v+" "+unit).trim()}),a:vals.indexOf(correct)}
 }
 var GEN={
 ohm:function(lv){
@@ -496,8 +545,93 @@ cenergy:function(lv){
   var Cd2=d2[0],Vd2=d2[1],Wd2=Cd2*Vd2*Vd2/2000;
   return {q:Cd2+" μF のコンデンサに "+Vd2+" V の直流電圧を加えた。充電後に蓄えられるエネルギーは。",
     ans:Wd2,dis:[Wd2*2,Wd2/2,Cd2*Vd2/1000,Wd2*10],unit:"mJ",
-    exp:"W＝CV²/2＝"+Cd2+"×"+Vd2+"²/2000＝"+fmt(Wd2)+" mJ"}}
-};
+    exp:"W＝CV²/2＝"+Cd2+"×"+Vd2+"²/2000＝"+fmt(Wd2)+" mJ"}},
+vpeak:function(lv){
+  var values=pick([[20,28.2],[40,56.4],[50,70.5],[70,98.7]]);
+  var V=values[0],Vm=values[1],root2=1.41;
+  if(lv===2){
+    var peak=V*root2;
+    return {q:"実効値が "+V+" V である正弦波交流電圧の最大値はいくらか。（√2＝1.41 とする）",
+      ans:peak,dis:[V,V*2,V/root2,V/2],unit:"V",
+      exp:"最大値 Vm＝√2×V＝1.41×"+V+"＝"+fmt(peak)+" V"}
+  }
+  var rms=Vm/root2;
+  return {q:"最大値が "+Vm+" V である正弦波交流電圧の実効値はいくらか。（√2＝1.41 とする）",
+    ans:rms,dis:[Vm,Vm*2,Vm*root2,Vm/2],unit:"V",
+    exp:"実効値 V＝Vm/√2＝"+Vm+"/1.41＝"+fmt(rms)+" V"}
+},
+zseries:function(lv){
+  if(lv===2){
+    var c=pick([[3,9,5],[8,15,9],[5,19,7],[15,14,6],[7,30,6]]);
+    var R=c[0],XL=c[1],XC=c[2],X=XL-XC,sum=XL+XC;
+    var Z=Math.sqrt(R*R+X*X);
+    return {q:"RLC直列回路の抵抗は "+R+" Ω、誘導性リアクタンスは "+XL+" Ω、容量性リアクタンスは "+XC+" Ωである。回路全体のインピーダンスの大きさは。",
+      ans:Z,dis:[R+X,Math.abs(R-X),Math.sqrt(R*R+sum*sum),R],unit:"Ω",
+      exp:"X＝XL−XC＝"+XL+"−"+XC+"＝"+X+" Ω、Z＝√(R²＋X²)＝√("+(R*R)+"＋"+(X*X)+")＝"+fmt(Z)+" Ω"}
+  }
+  var pair=pick([[3,4],[8,6]]);
+  var Rr=pair[0],Xr=pair[1];
+  var Zr=Math.sqrt(Rr*Rr+Xr*Xr);
+  return {q:"RLC直列回路の抵抗 R は "+Rr+" Ω、合成リアクタンス X（＝XL−XC）は "+Xr+" Ωである。回路全体のインピーダンスの大きさは。",
+    ans:Zr,dis:[Rr+Xr,Math.abs(Rr-Xr),Rr,Xr],unit:"Ω",
+    exp:"Z＝√(R²＋X²)＝√("+(Rr*Rr)+"＋"+(Xr*Xr)+")＝"+fmt(Zr)+" Ω"}
+},
+iseries:function(lv){
+  if(lv===2){
+    var c=pick([[3,9,5,10],[8,15,9,30],[5,7,19,52],[15,14,6,34],[7,30,6,75]]);
+    var R=c[0],XL=c[1],XC=c[2],Vv=c[3],X=XL-XC;
+    var Z=Math.sqrt(R*R+X*X),I=Vv/Z,VR=I*R;
+    return {q:"抵抗が "+R+" Ω、誘導性リアクタンスが "+XL+" Ω、容量性リアクタンスが "+XC+" Ωの RLC直列回路に、実効値 "+Vv+" V の正弦波交流電圧を加えた。抵抗の両端電圧の実効値は。",
+      ans:VR,dis:[Vv,I,Vv*R/(R+Math.abs(X)),I*Math.abs(X)],unit:"V",
+      exp:"X＝"+X+" Ω、Z＝"+fmt(Z)+" Ω、I＝V/Z＝"+fmt(I)+" A、VR＝IR＝"+fmt(I)+"×"+R+"＝"+fmt(VR)+" V"}
+  }
+  var pair=pick([[5,10],[10,30],[13,52],[17,34],[25,75]]);
+  var Zz=pair[0],Vv2=pair[1],Iv=Vv2/Zz;
+  return {q:"インピーダンスの大きさが "+Zz+" Ω の RLC直列回路に、実効値 "+Vv2+" V の正弦波交流電圧を加えた。回路に流れる電流の実効値は。",
+    ans:Iv,dis:[Zz/Vv2,Vv2*Zz,Vv2,Iv/2],unit:"A",
+    exp:"I＝V/Z＝"+Vv2+"/"+Zz+"＝"+fmt(Iv)+" A"}
+},
+acpower:function(lv){
+  if(lv===2){
+    var c=pick([[100,2,144],[60,5,270],[80,5,224],[100,4,184],[100,3,228]]);
+    var V=c[0],I=c[1],P=c[2],S=V*I,pf=P/S;
+    return {q:"単相正弦波交流回路の電圧と電流の実効値はそれぞれ "+V+" V と "+I+" A で、有効電力は "+P+" W である。力率を小数で表すと。",
+      ans:pf,dis:[S/P,(S-P)/S,pf/2,1],unit:"",
+      exp:"皮相電力 S＝VI＝"+fmt(S)+" VA、力率 cosθ＝P/S＝"+P+"/"+fmt(S)+"＝"+fmt(pf)}
+  }
+  var d=pick([[50,2,0.6],[100,3,0.8],[120,2,0.75],[80,5,0.65],[60,4,0.85]]);
+  var Vv=d[0],Iv=d[1],csth=d[2],S2=Vv*Iv;
+  var P2=S2*csth;
+  return {q:"単相正弦波交流回路の電圧と電流の実効値はそれぞれ "+Vv+" V と "+Iv+" A で、力率は "+csth+" である。有効電力は。",
+    ans:P2,dis:[S2,P2/2,S2-P2,S2/csth],unit:"W",
+    exp:"P＝VIcosθ＝"+Vv+"×"+Iv+"×"+csth+"＝"+fmt(P2)+" W"}
+},
+leadlag:function(lv){
+  var ch=[
+    "誘導性で、電流は電源電圧より遅れる。",
+    "容量性で、電流は電源電圧より進む。",
+    "直列共振で、電流と電源電圧は同相、力率は1である。",
+    "誘導性で、電流は電源電圧より進む。",
+    "容量性で、電流は電源電圧より遅れる。"
+  ];
+  var q,sign,calculation;
+  if(lv===2){
+    var pair=pick([[15,9],[7,19],[12,12]]);
+    var XL=pair[0],XC=pair[1],X=XL-XC;
+    q="RLC直列回路の誘導性リアクタンスは "+XL+" Ω、容量性リアクタンスは "+XC+" Ωである。回路の性質と、電源電圧に対する電流の位相について正しいものは。";
+    sign=(X>0)?1:(X<0?-1:0);
+    calculation="X＝XL−XC＝"+XL+"−"+XC+"＝"+X+" Ω。";
+  }else{
+    sign=pick([1,-1]);
+    var larger=sign>0?"誘導性リアクタンスが容量性リアクタンスより":"容量性リアクタンスが誘導性リアクタンスより";
+    q="RLC直列回路で、"+larger+"大きい。回路の性質と、電源電圧に対する電流の位相について正しいものは。";
+    calculation=sign>0?"XL＞XC なので X＝XL−XC は正。":"XL＜XC なので X＝XL−XC は負。";
+  }
+  var a=sign>0?0:(sign<0?1:2);
+  var exp=calculation+ch[a];
+  if(a===2)exp+="電源電圧の実効値が一定なら、インピーダンスは最小となり、電流は最大になる。";
+  return {q:q,ch:ch,a:a,exp:exp}
+}};
 var lastQ={};
 function serveType(t,lv){
   if(t.gen&&GEN[t.gen]){
@@ -511,40 +645,162 @@ function serveType(t,lv){
 }
 
 /* ---------- 電卓 ---------- */
-var calc={cur:"0",acc:null,op:null,fresh:false,raw:null};
-function fmtC(x){if(!isFinite(x))return "Error";var s=String(Math.round(x*1e9)/1e9);return s.length>13?String(Number(x).toExponential(6)):s}
-function cShow(v){document.getElementById("calcDisp").textContent=v!==undefined?fmtC(v):calc.cur}
+var calc={cur:"0",acc:null,op:null,fresh:false,raw:null,mem:0,mrcArmed:false,repOp:null,repV:null,gt:0,gtArmed:false};
+function fmtStr(s){
+  if(s==="Error"||s.indexOf("e")>=0)return s;
+  var neg=s.charAt(0)==="-";if(neg)s=s.slice(1);
+  var dot=s.indexOf(".");
+  var ip=dot<0?s:s.slice(0,dot),dp=dot<0?"":s.slice(dot);
+  if(ip.length>16)return (neg?"-":"")+s;
+  return (neg?"-":"")+ip.replace(/\B(?=(\d{3})+(?!\d))/g,",")+dp;
+}
+function cText(x){
+  if(!isFinite(x))return "Error";
+  return String(Math.abs(x)>1e11?x:Number(x.toFixed(12)));
+}
+function cShow(){
+  var marks=(isFinite(calc.gt)&&calc.gt!==0)?"GT ":"";
+  marks+=(isFinite(calc.mem)&&calc.mem!==0)?"M":"";
+  document.getElementById("calcMem").textContent=marks;
+  document.getElementById("calcDisp").textContent=fmtStr(calc.cur);
+}
 function cDigit(d){
+  calc.mrcArmed=false;calc.gtArmed=false;
+  calc.repOp=null;calc.repV=null; // 新しい入力は=リピートの連鎖を断つ（Casio動作）
   if(calc.fresh){calc.cur="0";calc.fresh=false}
   calc.raw=null;
+  if(calc.cur==="-0")calc.cur="0";
+  if(d!=="."&&calc.cur.replace(/\D/g,"").length>=12)return;
   if(d==="."&&calc.cur.indexOf(".")>=0)return;
   if(calc.cur==="0"&&d!==".")calc.cur=d;else calc.cur+=d;
   cShow();
 }
 function cApply(a,b,op){if(op==="+")return a+b;if(op==="-")return a-b;if(op==="×")return a*b;return b===0?NaN:a/b}
 function cOp(o){
-  var v=(calc.raw!==null)?calc.raw:parseFloat(calc.cur);
-  if(calc.acc===null){calc.acc=v}
-  else if(calc.op!==null&&!calc.fresh){calc.acc=cApply(calc.acc,v,calc.op)}
+  calc.mrcArmed=false;calc.gtArmed=false;
+  var operandReady=(calc.raw!==null)||!calc.fresh;
+  if(calc.acc===null){calc.acc=(calc.raw!==null)?calc.raw:parseFloat(calc.cur)}
+  else if(calc.op!==null&&operandReady){
+    calc.acc=cApply(calc.acc,(calc.raw!==null)?calc.raw:parseFloat(calc.cur),calc.op);
+  }
   calc.raw=null;
-  calc.op=o;calc.fresh=true;cShow(calc.acc);
+  calc.cur=cText(calc.acc);
+  if(!isFinite(calc.acc)){calc.op=null;calc.acc=null;calc.repOp=null;calc.repV=null}
+  else calc.op=o;
+  calc.fresh=true;cShow();
 }
 function cEq(){
-  if(calc.op===null||calc.acc===null)return;
-  var v=(calc.raw!==null)?calc.raw:parseFloat(calc.cur);
+  calc.mrcArmed=false;calc.gtArmed=false;
+  if(calc.op===null||calc.acc===null){
+    // Casio動作: =を続けて押すと直前の二項演算をもう一度適用する
+    if(calc.repOp!==null&&calc.repV!==null&&calc.raw!==null&&calc.fresh){
+      var rr=cApply(calc.raw,calc.repV,calc.repOp);
+      if(!isFinite(rr)){calc.cur="Error";calc.raw=null;calc.repOp=null;calc.repV=null;calc.fresh=true;cShow();return}
+      calc.gt+=rr;
+      calc.raw=rr;calc.cur=cText(rr);cShow();return;
+    }
+    return;
+  }
+  var v=calcOperand();
   var r=cApply(calc.acc,v,calc.op);
-  if(!isFinite(r)){calc.cur="Error";calc.raw=null;calc.acc=null;calc.op=null;calc.fresh=true;cShow();return}
+  calc.repOp=calc.op;calc.repV=v;
+  if(!isFinite(r)){calc.cur="Error";calc.raw=null;calc.acc=null;calc.op=null;calc.repOp=null;calc.repV=null;calc.fresh=true;cShow();return}
+  calc.gt+=r;
   calc.raw=r;
-  calc.cur=String(Math.round(r*1e12)/1e12);calc.acc=null;calc.op=null;calc.fresh=true;cShow();
+  calc.cur=cText(r);calc.acc=null;calc.op=null;calc.fresh=true;cShow();
 }
-function cClear(){calc={cur:"0",acc:null,op:null,fresh:false,raw:null};cShow()}
-function cBack(){if(calc.fresh)return;calc.cur=calc.cur.length>1?calc.cur.slice(0,-1):"0";if(calc.cur==="-"||calc.cur==="")calc.cur="0";cShow()}
+function cSqrt(){
+  calc.mrcArmed=false;calc.gtArmed=false;
+  var midOp=(calc.raw===null&&calc.fresh&&calc.op!==null&&calc.acc!==null);
+  var v=(calc.raw!==null)?calc.raw:(midOp?calc.acc:parseFloat(calc.cur));
+  if(!isFinite(v)||v<0){calc.cur="Error";calc.raw=null;calc.acc=null;calc.op=null;calc.fresh=true;cShow();return}
+  calc.cur=cText(Math.sqrt(v));
+  if(midOp){calc.acc=Math.sqrt(v);calc.raw=null} // 演算子入力待ち直後は表示値（左辺）に作用
+  else{calc.raw=Math.sqrt(v)}
+  calc.fresh=true;cShow();
+}
+function cClear(){calc={cur:"0",acc:null,op:null,fresh:false,raw:null,mem:calc.mem,mrcArmed:false,repOp:null,repV:null,gt:calc.gt,gtArmed:false};cShow()}
+function cBack(){calc.mrcArmed=false;calc.gtArmed=false;if(calc.fresh)return;calc.cur=calc.cur.length>1?calc.cur.slice(0,-1):"0";if(calc.cur==="-"||calc.cur==="-0"||calc.cur==="")calc.cur="0";cShow()}
+function cPercent(){
+  calc.mrcArmed=false;calc.gtArmed=false;
+  var v,a,r;
+  if(calc.op!==null&&calc.acc!==null){
+    a=calc.acc;v=calcOperand();
+    if(calc.op==="÷")r=isFinite(a*100)?a*100/v:(a/v)*100;
+    else{
+      var product=a*v;
+      var portion=isFinite(product)?product/100:(a/100)*v;
+      r=calc.op==="×"?portion:cApply(a,portion,calc.op);
+    } // +/− は「aのb%」を加減
+    calc.repOp=null;calc.repV=null;
+    if(!isFinite(r)){calc.cur="Error";calc.raw=null;calc.acc=null;calc.op=null;calc.fresh=true;cShow();return}
+    calc.raw=r;calc.cur=cText(r);calc.acc=null;calc.op=null;calc.fresh=true;cShow();return;
+  }
+  v=(calc.raw!==null)?calc.raw:parseFloat(calc.cur);
+  r=v/100;
+  if(!isFinite(r)){calc.cur="Error";calc.raw=null;calc.fresh=true;cShow();return}
+  calc.raw=r;calc.cur=cText(r);calc.fresh=true;cShow();
+}
+function calcOperand(){ // 現在の表示値（メモリ加減の対象）
+  if(calc.raw!==null)return calc.raw;
+  if(calc.fresh&&calc.op!==null&&calc.acc!==null)return calc.acc;
+  return parseFloat(calc.cur);
+}
+function cMPlus(){ // Casio: M+は保留中の計算を確定してから加算する（=と同じ確定キー）
+  calc.mrcArmed=false;calc.gtArmed=false;
+  if(calc.cur!=="Error"&&calc.op!==null&&calc.acc!==null&&(calc.raw!==null||!calc.fresh)){
+    var v=(calc.raw!==null)?calc.raw:parseFloat(calc.cur);
+    var r=cApply(calc.acc,v,calc.op);
+    if(isFinite(r)){calc.gt+=r;calc.raw=r;calc.cur=cText(r);calc.acc=null;calc.op=null;calc.fresh=true}
+    else{calc.cur="Error";calc.raw=null;calc.acc=null;calc.op=null;calc.fresh=true;cShow();return}
+  }
+  var d=calcOperand();
+  if(isFinite(d))calc.mem+=d;
+  cShow();
+}
+function cMMinus(){
+  calc.mrcArmed=false;calc.gtArmed=false;
+  if(calc.cur!=="Error"&&calc.op!==null&&calc.acc!==null&&(calc.raw!==null||!calc.fresh)){
+    var v=(calc.raw!==null)?calc.raw:parseFloat(calc.cur);
+    var r=cApply(calc.acc,v,calc.op);
+    if(isFinite(r)){calc.gt+=r;calc.raw=r;calc.cur=cText(r);calc.acc=null;calc.op=null;calc.fresh=true}
+    else{calc.cur="Error";calc.raw=null;calc.acc=null;calc.op=null;calc.fresh=true;cShow();return}
+  }
+  var d2=calcOperand();
+  if(isFinite(d2))calc.mem-=d2;
+  cShow();
+}
+function cMrc(){
+  calc.gtArmed=false;
+  if(calc.mrcArmed)calc.mem=0;
+  calc.mrcArmed=!calc.mrcArmed;
+  cRecall(calc.mem);
+}
+function cDbl(){cDigit("0");cDigit("0")}
+function cGt(){
+  calc.mrcArmed=false;
+  if(calc.gtArmed)calc.gt=0;
+  calc.gtArmed=!calc.gtArmed;
+  cRecall(calc.gt);
+}
+function cRecall(value){
+  calc.repOp=null;calc.repV=null;
+  calc.raw=value;calc.cur=cText(value);calc.fresh=true;cShow();
+}
 function cSign(){
+  calc.mrcArmed=false;calc.gtArmed=false;
+  if(calc.cur==="Error")return; // エラー表示は符号反転しない
   if(calc.raw!==null){ // =の直後は内部値ベース（丸めで 0 表示でも符号を反転できる）
     calc.raw=-calc.raw;
-    calc.cur=String(Math.round(calc.raw*1e12)/1e12);
+    calc.cur=cText(calc.raw);
     if(parseFloat(calc.cur)===0&&calc.raw!==0)calc.cur=calc.raw<0?"-0":"0";
     cShow();return;
+  }
+  if(calc.fresh&&calc.op!==null&&calc.acc!==null){ // 演算子入力待ち直後は表示値（左辺acc）の符号
+    if(!isFinite(calc.acc))return; // Error表示中は何もしない
+    calc.acc=-calc.acc;
+    calc.cur=cText(calc.acc);cShow();
+    return;
   }
   if(calc.cur==="0"||calc.cur===""||calc.cur==="-")return;
   calc.cur=calc.cur.charAt(0)==="-"?calc.cur.slice(1):"-"+calc.cur;cShow();
@@ -552,11 +808,13 @@ function cSign(){
 document.getElementById("btnCalc").onclick=function(){cClear();document.getElementById("calcSheet").classList.remove("hidden")};
 document.getElementById("btnCalcClose").onclick=function(){document.getElementById("calcSheet").classList.add("hidden")};
 (function(){
-  var keys=[["C",cClear,""],["⌫",cBack,""],["±",cSign,""],["÷",function(){cOp("÷")},"op"],
+  var keys=[["AC",cClear,""],["⌫",cBack,""],["%",cPercent,""],["GT",cGt,"op"],
+    ["MRC",cMrc,"mem"],["M−",cMMinus,"mem"],["M+",cMPlus,"mem"],["÷",function(){cOp("÷")},"op"],
     ["7",function(){cDigit("7")},""],["8",function(){cDigit("8")},""],["9",function(){cDigit("9")},""],["×",function(){cOp("×")},"op"],
     ["4",function(){cDigit("4")},""],["5",function(){cDigit("5")},""],["6",function(){cDigit("6")},""],["−",function(){cOp("-")},"op"],
     ["1",function(){cDigit("1")},""],["2",function(){cDigit("2")},""],["3",function(){cDigit("3")},""],["＋",function(){cOp("+")},"op"],
-    ["0",function(){cDigit("0")},""],[".",function(){cDigit(".")},""],["=",cEq,"eq"]];
+    ["0",function(){cDigit("0")},""],["00",cDbl,""],[".",function(){cDigit(".")},""],["=",cEq,"eq"],
+    ["√",cSqrt,""],["±",cSign,""]];
   var g=document.getElementById("calcKeys");
   keys.forEach(function(k){var b=document.createElement("button");b.textContent=k[0];if(k[2])b.className=k[2];b.onclick=k[1];g.appendChild(b)});
 })();
@@ -565,16 +823,25 @@ document.getElementById("btnCalcClose").onclick=function(){document.getElementBy
 document.getElementById("btnPeek").onclick=function(){
   var t=sess[idx].t;
   document.getElementById("cardName").textContent=t.name;
-  document.getElementById("cardBody").textContent=t.card;
+  document.getElementById("cardBody").innerHTML=renderText(t.text||(typeof TEXTBOOK!=="undefined"&&TEXTBOOK[t.id])||t.card);
+  document.getElementById("btnCardOk").style.display="none";
+  document.getElementById("btnCardClose").style.display="block";
   document.getElementById("typeCard").classList.remove("hidden");
 };
 document.getElementById("btnCardClose").onclick=function(){document.getElementById("typeCard").classList.add("hidden")};
 
 /* ---------- セッション ---------- */
 function dueTypes(){return T.filter(function(t){var s=S.stT[t.id];return s&&!s.m&&s.due&&s.due<=today()})}
+function isSide(t){var u=um(t.unit);return !!(u&&u.side)}
+function dueMain(){return dueTypes().filter(function(t){return !isSide(t)})}
+function dueSide(){return dueTypes().filter(function(t){return isSide(t)})}
+function newTypesMain(n){var out=[];for(var i=0;i<T.length&&out.length<n;i++){var t=T[i];if(!isSide(t)&&!S.stT[t.id])out.push({t:t,isNew:true})}return out}
+function newTypesSide(n){var out=[];for(var i=0;i<T.length&&out.length<n;i++){var t=T[i];if(isSide(t)&&!S.stT[t.id])out.push({t:t,isNew:true})}return out}
+function usedSideToday(){var c=0,d=today();T.forEach(function(t){var s=S.stT[t.id];if(s&&s.born===d&&isSide(t))c++});return c}
 function newCount(){
   var used=0,unseen=0,d=today();
   T.forEach(function(t){
+    if(isSide(t))return;
     var s=S.stT[t.id];
     if(!s)unseen++;
     else if(s.born===d)used++;
@@ -582,12 +849,116 @@ function newCount(){
   return Math.max(0,Math.min(S.set.newPerDay-used,unseen));
 }
 function newTypes(n){var out=[];for(var i=0;i<T.length&&out.length<n;i++){if(!S.stT[T[i].id])out.push({t:T[i],isNew:true})}return out}
-var sess=[],idx=0,correct=0,wrongT={},qStart=0,answered=false,sessMode="sched";
+var sess=[],idx=0,correct=0,wrongT={},wrongP={},qStart=0,answered=false,sessMode="sched",hintIdx=0;
+var sessionDate,sessionSnapshot,workspaceTimer;
+function readLocal(key){
+  try{return JSON.parse(localStorage.getItem(key))}catch(e){return null}
+}
+function saveSession(){
+  var queue=sess.map(function(item){
+    var row={id:item.t.id,isNew:!!item.isNew,practice:!!item.practice,srv:item.srv||null};
+    if(typeof item.ok==="boolean")row.ok=item.ok;
+    if(item.doneAtServe!=null)row.doneAtServe=item.doneAtServe;
+    return row;
+  });
+  sessionSnapshot=JSON.stringify({date:sessionDate,mode:sessMode,idx:idx,queue:queue});
+  localStorage.setItem("dk3-sess",sessionSnapshot);
+}
+function resumableSession(){
+  var saved=readLocal("dk3-sess");
+  if(!saved||saved.date!==today()||["sched","weekly","practice"].indexOf(saved.mode)<0||
+    !Array.isArray(saved.queue)||!Number.isInteger(saved.idx)||saved.idx<0||saved.idx>=saved.queue.length)return null;
+  var queue=[],position=0;
+  saved.queue.forEach(function(row,i){
+    var t=row&&tm(row.id);
+    if(!t)return;
+    if(i<saved.idx)position++;
+    queue.push({t:t,isNew:row.isNew,practice:row.practice,srv:row.srv,ok:row.ok,doneAtServe:row.doneAtServe});
+  });
+  return position<queue.length?{queue:queue,idx:position,mode:saved.mode}:null;
+}
+function enterSession(mode,position){
+  sessionDate=today();sessMode=mode;idx=position;correct=0;wrongT={};wrongP={};
+  sess.slice(0,idx).forEach(function(item){
+    if(item.ok===true)correct++;
+    if(item.ok===false){var wrong=item.practice?wrongP:wrongT;wrong[item.t.id]=(wrong[item.t.id]||0)+1}
+  });
+  saveSession();show("vQuiz");stepItem();
+}
+document.getElementById("btnResume").onclick=function(){
+  var saved=resumableSession();
+  if(!saved){renderHome();return}
+  sess=saved.queue;enterSession(saved.mode,saved.idx);
+};
+document.getElementById("btnRestart").onclick=function(){
+  clearSession();renderHome();document.getElementById("btnStart").onclick();
+};
+function discardConflictedSession(){
+  flushWorkspace();
+  if(localStorage.getItem("dk3-sess")===sessionSnapshot)localStorage.removeItem("dk3-sess");
+  sess=[];
+}
+function clearSession(){
+  clearTimeout(workspaceTimer);workspaceTimer=null;
+  localStorage.removeItem("dk3-sess");
+  for(var i=localStorage.length-1;i>=0;i--){
+    var key=localStorage.key(i);
+    if(key.indexOf("dk3-ws-")===0)localStorage.removeItem(key);
+  }
+}
+function flushWorkspace(){
+  if(workspaceTimer==null)return;
+  clearTimeout(workspaceTimer);workspaceTimer=null;
+  var item=sess[idx];
+  if(item&&item.srv)localStorage.setItem("dk3-ws-"+item.t.id,JSON.stringify({
+    q:item.srv.q,scratch:document.getElementById("scratch").value,plan:document.getElementById("planIn").value
+  }));
+}
+function scheduleWorkspace(){
+  clearTimeout(workspaceTimer);
+  workspaceTimer=setTimeout(flushWorkspace,300);
+}
+document.getElementById("scratch").oninput=scheduleWorkspace;
+document.getElementById("planIn").oninput=scheduleWorkspace;
+window.addEventListener("pagehide",flushWorkspace);
+function advanceItem(){
+  clearTimeout(workspaceTimer);workspaceTimer=null;
+  localStorage.removeItem("dk3-ws-"+sess[idx].t.id);
+  idx++;saveSession();
+  if(idx>=sess.length)end();else stepItem();
+}
+function renderText(s){
+  if(!s)return "";
+  return String(s).split(/\n\n+/).map(function(p){
+    return "<p style='margin:8px 0'>"+p.replace(/\n/g,"<br>")+"</p>";
+  }).join("");
+}
 function show(id){["vHome","vQuiz","vEnd","vWeak"].forEach(function(v){document.getElementById(v).classList.toggle("hidden",v!==id)})}
 
 function renderHome(){
-  document.getElementById("dueN").textContent=dueTypes().length;
-  document.getElementById("newN").textContent=newCount();
+  var saved=resumableSession(),resume=document.getElementById("btnResume");
+  resume.classList.toggle("hidden",!saved);
+  document.getElementById("btnRestart").classList.toggle("hidden",!saved);
+  document.getElementById("btnStart").classList.toggle("hidden",!!saved);
+  if(saved)resume.textContent="続きから再開（残り "+(saved.queue.length-saved.idx)+" 問）";
+  var dNow=dueMain().length,nNow=newCount();
+  document.getElementById("dueN").textContent=dNow;
+  document.getElementById("newN").textContent=nNow;
+  var sideUnseen=0;
+  T.forEach(function(t){if(isSide(t)&&!S.stT[t.id])sideUnseen++});
+  var sideAvail=dueSide().length+Math.min(Math.max(0,DAILY_SIDE-usedSideToday()),sideUnseen);
+  document.getElementById("sideN").textContent=sideAvail;
+  var tgt=DAILY_MAIN,fillCnt=0;
+  if(tgt>dNow+nNow){
+    var ids={};
+    dueMain().forEach(function(t){ids[t.id]=1});
+    var poolN=0;
+    T.forEach(function(t){var s=S.stT[t.id];if(s&&!s.m&&!isSide(t)&&!ids[t.id])poolN++});
+    fillCnt=Math.min(tgt-dNow-nNow,poolN);
+  }
+  document.getElementById("fillN").textContent=fillCnt;
+  var total=Math.min(DAILY_MAIN+DAILY_SIDE,sideAvail+dNow+nNow+fillCnt);
+  document.getElementById("tgtMsg").textContent="量の目標: 1日 "+(DAILY_MAIN+DAILY_SIDE)+"問・鉄緑と同等の2〜3時間（メイン115＋法規5。本日は最大 "+total+" 問）";
   var tot=T.length,seen=Object.keys(S.stT).length;
   var lv2=T.filter(function(t){return S.stT[t.id]&&S.stT[t.id].lv===2}).length;
   var mst=T.filter(function(t){return S.stT[t.id]&&S.stT[t.id].m}).length;
@@ -609,47 +980,151 @@ function renderHome(){
   document.getElementById("btnPractice").classList.toggle("hidden",!knownAny);
   var selv=String(S.set.newPerDay);
   var sel=document.getElementById("selNew"),i;
-  for(i=sel.options.length-1;i>=0;i--)if(["5","10","15","20"].indexOf(sel.options[i].value)===-1)sel.remove(i);
+  for(i=sel.options.length-1;i>=0;i--)if(["5","10","15","20","30"].indexOf(sel.options[i].value)===-1)sel.remove(i);
   var has=false;
   for(i=0;i<sel.options.length;i++)if(sel.options[i].value===selv)has=true;
   if(!has)sel.add(new Option(selv,selv));
   sel.value=selv;
+  // 戦略カード: 3周カレンダーに対する進捗と週テスト
+  var plan=DATA.plan,pc="";
+  if(plan){
+    var now=Date.parse(today()+"T00:00:00");
+    var p1s=Date.parse(plan.pass1.start+"T00:00:00"),p1e=Date.parse(plan.pass1.end+"T00:00:00");
+    var p2e=Date.parse(plan.pass2.end+"T00:00:00");
+    var phase=now<=p1e?plan.pass1.label:(now<=p2e?plan.pass2.label:plan.pass3.label);
+    var tot2=T.length,seen2=Object.keys(S.stT).length;
+    var frac=Math.max(0,Math.min(1,(now-p1s)/(p1e-p1s)));
+    var expected=Math.floor(tot2*frac);
+    var diff=seen2-expected;
+    pc+="<div class='sub'>戦略: "+phase+"</div>";
+    pc+="<table><tr><th>1周目(接触済)</th><td class='num'>"+seen2+" / "+tot2+" 型</td><th>目標比</th><td class='num'>"+(diff>=0?"+":"")+diff+" 型</td></tr></table>";
+    pc+="<div class='bar'><div style='width:"+(tot2?Math.min(100,seen2/tot2*100):0)+"%'></div></div>";
+    pc+="<div class='sub' style='margin-top:6px'>"+plan.note+"</div>";
+    var wk=S.set.weekly;
+    var takenThisWeek=(wk&&weekKey(wk.date)===weekKey(today()));
+    if(wk)pc+="<div class='sub' style='margin-top:6px'>前回の週テスト: "+wk.score+" / "+wk.total+"（"+wk.date+"）</div>";
+    var lg=readLog();
+    if(lg)pc+="<div class='sub' style='margin-top:6px'>連続学習: "+lg.s+"日"+(lg.d===today()?"（本日実施済み）":"（最終 "+lg.d+"）")+"</div>";
+    pc+="<div class='sub' style='margin-top:6px'>量の目標: 1日 "+(DAILY_MAIN+DAILY_SIDE)+"問（メイン115＋法規5・並行）</div>";
+    document.getElementById("btnWeekly").classList.toggle("hidden",!(seen2>=5&&!takenThisWeek));
+  }
+  var rows="";
+  U.forEach(function(u){
+    var tot=0,seen=0,mst=0;
+    T.forEach(function(t){if(t.unit!==u.id)return;tot++;var s=S.stT[t.id];if(s){seen++;if(s.m)mst++}});
+    if(!tot)return;
+    rows+="<tr><td>"+u.s+"・"+u.n+"</td><td class='num'>"+seen+"/"+tot+"</td><td class='num'>"+mst+"</td></tr>";
+  });
+  if(rows)pc="<table style='margin-bottom:8px'><tr><th>単元（テキスト目次）</th><th class='num'>接触</th><th class='num'>修了</th></tr>"+rows+"</table>"+pc;
+  document.getElementById("planCard").innerHTML=pc;
 }
 
 document.getElementById("btnStart").onclick=function(){
-  sess=dueTypes().map(function(t){return {t:t,isNew:false}}).concat(newTypes(newCount()));
-  if(!sess.length){document.getElementById("homeMsg").textContent="今日の新規は投入済み・復習もなし。下の「自由練習」で回せます。";return}
-  sessMode="sched";
-  idx=0;correct=0;wrongT={};show("vQuiz");stepItem();
+  var sideQuota=Math.max(0,DAILY_SIDE-usedSideToday());
+  sess=dueSide().map(function(t){return {t:t,isNew:false}})
+    .concat(newTypesSide(sideQuota))
+    .concat(dueMain().map(function(t){return {t:t,isNew:false}}))
+    .concat(newTypesMain(newCount()));
+  var target=DAILY_MAIN; // メインの量目標（法規5問とは別枠・法規は毎日並行）
+  var mainCount=dueMain().length+newCount();
+  if(mainCount<target){
+    var have={};
+    sess.forEach(function(it){have[it.t.id]=1});
+    var pool=T.filter(function(t){return S.stT[t.id]&&!S.stT[t.id].m&&!isSide(t)&&!have[t.id]});
+    shuffle(pool).slice(0,target-mainCount).forEach(function(t){sess.push({t:t,isNew:false,practice:true})});
+  }
+  if(!sess.length){document.getElementById("homeMsg").textContent="本日の予定分は全て投入済み。下の「自由練習」で回せます。";return}
+  enterSession("sched",0);
 };
 
 document.getElementById("btnPractice").onclick=function(){
   var known=T.filter(function(t){return S.stT[t.id]});
   if(!known.length){document.getElementById("homeMsg").textContent="まず「はじめる」で最初の型を始めてください。";return}
   sess=shuffle(known.slice()).slice(0,10).map(function(t){return {t:t,isNew:false,practice:true}});
-  sessMode="practice";
-  idx=0;correct=0;wrongT={};show("vQuiz");stepItem();
+  enterSession("practice",0);
 };
 
+function unitTouched(uid){return T.some(function(x){return x.unit===uid&&S.stT[x.id]})}
+var gateStage=0;
+function showGate(title,body,okLabel){
+  document.getElementById("cardName").textContent=title;
+  document.getElementById("cardBody").innerHTML=renderText(body);
+  document.getElementById("btnCardOk").textContent=okLabel;
+  document.getElementById("btnCardOk").style.display="block";
+  document.getElementById("btnCardClose").style.display="none";
+  document.getElementById("typeCard").classList.remove("hidden");
+}
+function closeGate(){
+  document.getElementById("typeCard").classList.add("hidden");
+  document.getElementById("btnCardOk").style.display="none";
+  document.getElementById("btnCardClose").style.display="block";
+}
+function typeLectureOf(t){return t.text||(typeof TEXTBOOK!=="undefined"&&TEXTBOOK[t.id])||t.card}
 function stepItem(){
-  var item=sess[idx];
+  var item=sess[idx],t=item.t;
   document.getElementById("qIdx").textContent=(idx+1)+" / "+sess.length;
+  if(item.isNew){ // 鉄緑の授業の順: 単元導入 → 型の講義 → 確認問題。初見をいきなり解かせない
+    var u=um(t.unit);
+    if(u&&u.intro&&!unitTouched(t.unit)){
+      gateStage=0;
+      showGate(u.s+"・"+u.n+"（単元の導入）",u.intro,"次へ：この型の講義へ");
+      return;
+    }
+    gateStage=1;
+    showGate(t.name+"（講義）",typeLectureOf(t),"理解した → 確認問題へ");
+    return;
+  }
   showQuestion(item);
 }
+document.getElementById("btnCardOk").onclick=function(){
+  var t=sess[idx].t;
+  if(gateStage===0){
+    gateStage=1;
+    showGate(t.name+"（講義）",typeLectureOf(t),"理解した → 確認問題へ");
+    return;
+  }
+  closeGate();
+  showQuestion(sess[idx]);
+};
 
 function showQuestion(item){
   var t=item.t,isNew=item.isNew;
   var s=S.stT[t.id],lv=s?s.lv:1;
-  var srv=serveType(t,lv);
-  if(!srv){idx++;if(idx>=sess.length)end();else stepItem();return}
+  if(item.doneAtServe==null)item.doneAtServe=s?s.done:0;
+  var srv=item.srv||serveType(t,lv);
+  if(!srv){advanceItem();return}
+  item.srv=srv;
+  saveSession();
   document.getElementById("qUnit").textContent=um(t.unit).s+"・"+um(t.unit).n;
   document.getElementById("qLv").textContent=lv===2?"標準":"基礎";
   document.getElementById("qLv").className="tag"+(lv===2?" lv2":"");
   document.getElementById("qNew").classList.toggle("hidden",!isNew);
   document.getElementById("btnPeek").classList.toggle("hidden",!!isNew); // 初見は覗けない＝自分で考える
   document.getElementById("qText").textContent=srv.q;
-  document.getElementById("scratch").value="";
-  document.getElementById("planIn").value="";
+  var ws=readLocal("dk3-ws-"+t.id);
+  if(!ws||ws.q!==srv.q)ws={};
+  document.getElementById("scratch").value=ws.scratch||"";
+  document.getElementById("planIn").value=ws.plan||"";
+  var hb=document.getElementById("hintBox");
+  hb.classList.add("hidden");hb.innerHTML="";
+  hintIdx=0;
+  document.getElementById("assistRow").style.display="flex";
+  document.getElementById("btnHint").onclick=function(){
+    var t=sess[idx].t;
+    var hints=t.hint||[t.card];
+    if(hintIdx>=hints.length){
+      hb.innerHTML="ヒントは出切りです。「答えと講義を見る」で手順を確認しましょう（✕として記録され、翌週テストで類題に再挑戦できます）。";
+      hb.classList.remove("hidden");return;
+    }
+    hb.innerHTML=renderText(hints[hintIdx]);
+    hb.classList.remove("hidden");
+    hintIdx++;
+  };
+  document.getElementById("btnGiveUp").onclick=function(){
+    var box=document.getElementById("choices");
+    if(box.classList.contains("hidden"))document.getElementById("btnReveal").onclick();
+    answer(srv,srv.a,item,true);
+  };
   document.getElementById("btnReveal").classList.remove("hidden");
   var box=document.getElementById("choices");
   box.className="choices hidden";box.innerHTML="";
@@ -669,26 +1144,30 @@ function showQuestion(item){
   };
 }
 
-function answer(srv,i,item){
+function answer(srv,i,item,forceWrong){
   if(answered)return;
   answered=true;
   var t=item.t,btns=document.getElementById("choices");
   btns.className="choices done";
-  var ok=(i===srv.a);
-  if(ok)correct++;else wrongT[t.id]=(wrongT[t.id]||0)+1;
+  var ok=(i===srv.a)&&!forceWrong;
+  item.ok=ok;
+  if(ok)correct++;
+  else if(item.practice)wrongP[t.id]=(wrongP[t.id]||0)+1;
+  else wrongT[t.id]=(wrongT[t.id]||0)+1;
+  document.getElementById("assistRow").style.display="none";
   btns.children[srv.a].classList.add("correct");
   if(!ok)btns.children[i].classList.add("wrong");
   var j=document.getElementById("judge");
-  j.textContent=ok?"〇 正解":"✕ 不正解";
-  j.style.color=ok?"#22c55e":"#ef4444";
+  j.textContent=forceWrong?"▼ 降参（✕として記録 → 翌週テストで類題に再挑戦）":(ok?"〇 正解":"✕ 不正解");
+  j.style.color=forceWrong?"#f59e0b":(ok?"#22c55e":"#ef4444");
   var secs=Math.round((Date.now()-qStart)/1000);
   var s=S.stT[t.id];
   var meta="型: "+t.name+"・所要 "+secs+"秒";
   if(s&&s.secN>0)meta+="・この型の平均 "+Math.round(s.secSum/s.secN)+"秒";
   document.getElementById("qMeta").textContent=meta;
-  if(item.isNew){
+  if(forceWrong||(item.isNew&&!ok)){
     var fc=document.getElementById("firstCard");
-    fc.innerHTML="<div class='t'>今回の型（これが解法のカード）</div>"+t.card;
+    fc.innerHTML="<div class='t'>"+(item.isNew?"今回の型の講義":"この型の講義")+"</div>"+renderText(t.text||(typeof TEXTBOOK!=="undefined"&&TEXTBOOK[t.id])||t.card);
     fc.classList.remove("hidden");
   }
   var plan=document.getElementById("planIn").value.trim();
@@ -703,15 +1182,29 @@ function answer(srv,i,item){
   var s2=S.stT[t.id],isLv2=s2&&s2.lv===2;
   if(item.practice){mk("next","次へ","r2")}
   else if(ok){mk("◎","◎ すぐ解けた（30日後）","r4");mk("◯","◯ 普通（14日後）","r3");mk("△","△ 迷った（7日後）","r2")}
-  else{mk("✕",isLv2?"✕ 次へ（3日後・基礎に戻る）":"✕ 次へ（3日後に類題）","r1")}
+  else{mk("✕",isLv2?"✕ 次へ（翌週テスト・基礎に戻る）":"✕ 次へ（翌週テストで類題）","r1")}
   document.getElementById("result").className="";
 }
 
 function rate(t,r,secs,item){
-  if(item&&item.practice){idx++;if(idx>=sess.length)end();else stepItem();return}
+  if(sess[idx]!==item)return;
+  if(item.practice){advanceItem();return}
+  return withStudyLock(keyT(t.id),function(){
+    if(sess[idx]===item)saveRating(t,r,secs,item);
+  });
+}
+function withStudyLock(key,save){
+  return navigator.locks?navigator.locks.request(key,save):save();
+}
+function saveRating(t,r,secs,item){
   var merged=load(); // 保存の瞬間にストレージを再読込（他タブの書き込みを上書きしない）
   var isNew=!merged.stT[t.id];
   var s=merged.stT[t.id]||{lv:1,streak:0,due:null,done:0,x:0,m:false,secN:0,secSum:0,born:null};
+  if(s.done!==item.doneAtServe){
+    S=merged;discardConflictedSession();show("vHome");renderHome();
+    document.getElementById("homeMsg").textContent="別のタブで採点済みのため、この解答は記録しませんでした。";
+    return;
+  }
   var wasLv2=s.lv===2;
   if(r==="✕"){s.x++;s.streak=0;if(wasLv2)s.lv=1}
   else if(r==="△"){}
@@ -725,18 +1218,46 @@ function rate(t,r,secs,item){
   S=merged;
   // 書き込みはこの1型のキーだけ＝他タブの同時採点と一切衝突しない（新規数は born から導出）
   localStorage.setItem(keyT(t.id),JSON.stringify(s));
-  idx++;
-  if(idx>=sess.length)end();else stepItem();
+  touchLog();
+  advanceItem();
 }
 
+function weeklyAlreadySaved(){
+  var saved=load().set.weekly,wk=weekKey(today());
+  if(saved&&weekKey(saved.date)===wk)S.set.weekly=saved;
+  if(!S.set.weekly||weekKey(S.set.weekly.date)!==wk)return false;
+  show("vHome");renderHome();
+  document.getElementById("homeMsg").textContent="今週の週テストは記録済みです。";
+  return true;
+}
+document.getElementById("btnWeekly").onclick=function(){
+  if(weeklyAlreadySaved())return;
+  var known=T.filter(function(t){return S.stT[t.id]});
+  if(known.length<5){document.getElementById("homeMsg").textContent="まず「はじめる」で5型以上始めてください。";return}
+  sess=shuffle(known.slice()).slice(0,10).map(function(t){return {t:t,isNew:false,practice:true}});
+  enterSession("weekly",0);
+};
+
 function end(){
+  clearSession();
+  if(sessMode==="weekly")return withStudyLock("dk3-w",function(){
+    if(weeklyAlreadySaved())return;
+    var rec={date:today(),score:correct,total:sess.length};
+    localStorage.setItem("dk3-w",JSON.stringify(rec)); // 週テストは設定(dk3-m3)と独立のキー
+    S.set.weekly=rec;
+    touchLog();showResult();
+  });
+  showResult();
+}
+function showResult(){
   document.getElementById("endStats").textContent=correct+" / "+sess.length;
-  var w=Object.keys(wrongT);
-  document.getElementById("endDetail").textContent=w.length
-    ?(sessMode==="practice"
-       ?"✕を出した型: "+w.map(function(id){return tm(id).name}).join("、")+"（※自由練習は本スケジュールに影響しません）"
-       :"✕を出した型: "+w.map(function(id){return tm(id).name}).join("、")+" → 3日後に数値違いの類題で再出題")
-    :"全部✕なし。すばらしい。";
+  var w=Object.keys(wrongT),wp=Object.keys(wrongP),parts=[];
+  var wg=[],wst=[];
+  w.forEach(function(id){var t=tm(id);if(t.gen)wg.push(t.name);else wst.push(t.name)});
+  if(wg.length)parts.push("✕を出した型: "+wg.join("、")+" → 翌週テストで数値違いの類題を再出題");
+  if(wst.length)parts.push("✕を出した型: "+wst.join("、")+" → 翌週、同じ問題で再挑戦（暗記型は反復が正しい）");
+  if(wp.length)parts.push((sessMode==="weekly"?"週テスト":"練習")+"分の✕: "+wp.map(function(id){return tm(id).name}).join("、")+"（本スケジュールに影響せず）");
+  document.getElementById("endDetail").textContent=parts.length?parts.join("　／　"):"全部✕なし。すばらしい。";
   show("vEnd");
 }
 document.getElementById("btnHome").onclick=function(){renderHome();show("vHome")};
@@ -761,12 +1282,13 @@ document.getElementById("btnWeakBack").onclick=function(){renderHome();show("vHo
 
 var sel=document.getElementById("selNew");
 sel.value=String(S.set.newPerDay);
-sel.onchange=function(){S.set.newPerDay=parseInt(sel.value,10)||10;writeMeta({newPerDay:S.set.newPerDay})};
+sel.onchange=function(){S.set.newPerDay=parseInt(sel.value,10)||10;writeMeta({newPerDay:S.set.newPerDay});renderHome()};
 
 document.getElementById("btnExport").onclick=function(){
   var t=document.getElementById("txData");
   t.classList.remove("hidden");
-  t.value=JSON.stringify(load());
+  var backup=load();backup.set.log=readLog();
+  t.value=JSON.stringify(backup);
   document.getElementById("btnImport").classList.remove("hidden");
   t.onclick=function(){t.select()};
 };
@@ -776,6 +1298,8 @@ document.getElementById("btnImport").onclick=function(){
     if(!v||!v.stT||typeof v.stT!=="object"||Array.isArray(v.stT)||!v.set||typeof v.set!=="object"||Array.isArray(v.set))throw new Error("bad");
     var n=normalizeState(v);
     if(!n)throw new Error("bad");
+    var log=validLog(v.set.log);
+    if(v.set.log!=null&&!log)throw new Error("bad log");
     var cur=Object.keys(S.stT).length,imp=Object.keys(n.stT).length;
     if(cur>0&&!confirm("現在の記録（"+cur+"型）をインポート内容（"+imp+"型）で上書きします。よろしいですか？"))return;
     S=n;
@@ -784,21 +1308,20 @@ document.getElementById("btnImport").onclick=function(){
     ks.forEach(function(k){localStorage.removeItem(k)}); // バックアップに無い型は完全に置き換える
     Object.keys(n.stT).forEach(function(tid){var rec=n.stT[tid];if(!rec.born)rec.born=null;localStorage.setItem(keyT(tid),JSON.stringify(rec))});
     writeMeta({newPerDay:n.set.newPerDay});
+    if(log)localStorage.setItem(KEYLOG,JSON.stringify(log));
+    else if(v.set.log===null)localStorage.removeItem(KEYLOG);
+    if(n.set.weekly)localStorage.setItem("dk3-w",JSON.stringify(n.set.weekly));
+    else localStorage.removeItem("dk3-w");
     localStorage.removeItem(KEY);localStorage.removeItem("dk3-v2");localStorage.removeItem("dk3-v1");
     location.reload();
   }catch(e){alert("JSONが読めません。エクスポートした全文を貼り付けてください")}
 };
-document.getElementById("btnReset").onclick=function(){
-  if(confirm("記録を全部消します。よろしいですか？（先にエクスポート推奨）")){
-    var ks=[],i;
-    for(i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(/^dk3-/.test(k))ks.push(k)}
-    ks.forEach(function(k){localStorage.removeItem(k)});
-    location.reload();
-  }
-};
 if("serviceWorker" in navigator&&location.protocol.indexOf("http")===0){
   navigator.serviceWorker.register("sw.js").catch(function(){});
 }
+document.addEventListener("visibilitychange",function(){
+  if(document.visibilityState==="visible"&&!document.getElementById("vHome").classList.contains("hidden"))renderHome();
+});
 renderHome();
 </script>
 </body>
