@@ -156,6 +156,7 @@ select{font-size:14px;padding:6px;border-radius:6px;background:#334155;color:var
 
 <script src="data.js?v=5"></script>
 <script src="textbook.js?v=1"></script>
+<script src="chapters.js?v=1"></script>
 <script>
 "use strict";
 if(typeof DATA==="undefined"){
@@ -844,6 +845,7 @@ document.getElementById("btnCardClose").onclick=function(){document.getElementBy
 function dueTypes(){return T.filter(function(t){var s=S.stT[t.id];return s&&!s.m&&s.due&&s.due<=today()})}
 function isSide(t){var u=um(t.unit);return !!(u&&u.side)}
 function dueMain(){return dueTypes().filter(function(t){return !isSide(t)})}
+function lawStarted(){return today()>=DATA.plan.lawStart}
 function dueSide(){return dueTypes().filter(function(t){return isSide(t)})}
 function newTypesMain(n){var out=[];for(var i=0;i<T.length&&out.length<n;i++){var t=T[i];if(!isSide(t)&&!S.stT[t.id])out.push({t:t,isNew:true})}return out}
 function newTypesSide(n){var out=[];for(var i=0;i<T.length&&out.length<n;i++){var t=T[i];if(isSide(t)&&!S.stT[t.id])out.push({t:t,isNew:true})}return out}
@@ -969,7 +971,8 @@ function renderHome(){
   document.getElementById("newN").textContent=nNow;
   var sideUnseen=0;
   T.forEach(function(t){if(isSide(t)&&!S.stT[t.id])sideUnseen++});
-  var sideAvail=dueSide().length+Math.min(Math.max(0,DAILY_SIDE-usedSideToday()),sideUnseen);
+  var lawOpen=lawStarted();
+  var sideAvail=lawOpen?dueSide().length+Math.min(Math.max(0,DAILY_SIDE-usedSideToday()),sideUnseen):0;
   document.getElementById("sideN").textContent=sideAvail;
   var tgt=DAILY_MAIN,fillCnt=0;
   if(tgt>dNow+nNow){
@@ -981,7 +984,9 @@ function renderHome(){
   }
   document.getElementById("fillN").textContent=fillCnt;
   var total=Math.min(DAILY_MAIN+DAILY_SIDE,sideAvail+dNow+nNow+fillCnt);
-  document.getElementById("tgtMsg").textContent="量の目標: 1日 "+(DAILY_MAIN+DAILY_SIDE)+"問・鉄緑と同等の2〜3時間（メイン115＋法規5。本日は最大 "+total+" 問）";
+  var startDate=DATA.plan.lawStart.split("-");
+  var phaseGoal="量の目標: 1日 "+(DAILY_MAIN+DAILY_SIDE)+"問（メイン"+DAILY_MAIN+"＋法規"+DAILY_SIDE+"は "+Number(startDate[1])+"/"+Number(startDate[2])+" から並行）";
+  document.getElementById("tgtMsg").textContent=lawOpen?"量の目標: 1日 "+(DAILY_MAIN+DAILY_SIDE)+"問・鉄緑と同等の2〜3時間（メイン115＋法規5。本日は最大 "+total+" 問）":phaseGoal;
   var tot=T.length,seen=Object.keys(S.stT).length;
   var lv2=T.filter(function(t){return S.stT[t.id]&&S.stT[t.id].lv===2}).length;
   var mst=T.filter(function(t){return S.stT[t.id]&&S.stT[t.id].m}).length;
@@ -1028,7 +1033,7 @@ function renderHome(){
     if(wk)pc+="<div class='sub' style='margin-top:6px'>前回の週テスト: "+wk.score+" / "+wk.total+"（"+wk.date+"）</div>";
     var lg=readLog();
     if(lg)pc+="<div class='sub' style='margin-top:6px'>連続学習: "+lg.s+"日"+(lg.d===today()?"（本日実施済み）":"（最終 "+lg.d+"）")+"</div>";
-    pc+="<div class='sub' style='margin-top:6px'>量の目標: 1日 "+(DAILY_MAIN+DAILY_SIDE)+"問（メイン115＋法規5・並行）</div>";
+    pc+="<div class='sub' style='margin-top:6px'>"+(lawOpen?"量の目標: 1日 "+(DAILY_MAIN+DAILY_SIDE)+"問（メイン115＋法規5・並行）":phaseGoal)+"</div>";
     document.getElementById("btnWeekly").classList.toggle("hidden",!(seen2>=5&&!takenThisWeek));
   }
   var rows="";
@@ -1043,7 +1048,8 @@ function renderHome(){
 }
 
 document.getElementById("btnStart").onclick=function(){
-  var sideQuota=Math.max(0,DAILY_SIDE-usedSideToday());
+  var lawOpen=lawStarted();
+  var sideQuota=lawOpen?Math.max(0,DAILY_SIDE-usedSideToday()):0;
   sess=dueMain().map(function(t){return {t:t,isNew:false}})
     .concat(newTypesMain(newCount()));
   var target=DAILY_MAIN; // メインの量目標（法規5問とは別枠・法規は毎日並行）
@@ -1054,7 +1060,7 @@ document.getElementById("btnStart").onclick=function(){
     var pool=T.filter(function(t){return S.stT[t.id]&&!S.stT[t.id].m&&!isSide(t)&&!have[t.id]});
     shuffle(pool).slice(0,target-mainCount).forEach(function(t){sess.push({t:t,isNew:false,practice:true})});
   }
-  sess=sess.concat(dueSide().map(function(t){return {t:t,isNew:false}}),newTypesSide(sideQuota));
+  if(lawOpen)sess=sess.concat(dueSide().map(function(t){return {t:t,isNew:false}}),newTypesSide(sideQuota));
   if(!sess.length){document.getElementById("homeMsg").textContent="本日の予定分は全て投入済み。下の「自由練習」で回せます。";return}
   enterSession("sched",0);
 };
@@ -1089,7 +1095,7 @@ function stepItem(){
     var u=um(t.unit);
     if(u&&u.intro&&!unitTouched(t.unit)){
       gateStage=0;
-      showGate(u.s+"・"+u.n+"（単元の導入）",u.intro,"次へ：この型の講義へ");
+      showGate(u.s+"・"+u.n+"（単元の導入）",(typeof CHAPTERS!=='undefined'&&CHAPTERS[u.id])||u.intro,"次へ：この型の講義へ");
       return;
     }
     gateStage=1;
