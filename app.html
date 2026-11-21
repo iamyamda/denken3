@@ -16,6 +16,7 @@ h1{font-size:20px;margin-bottom:2px}
 .big{font-size:38px;font-weight:700;margin:6px 0}
 .small{font-size:16px;color:var(--sub);font-weight:400}
 button{font-family:inherit;font-size:16px;border:none;border-radius:10px;padding:14px;width:100%;margin-top:8px;background:#334155;color:var(--tx)}
+#dismissGuide{width:auto;padding:2px 4px;margin:0;background:none;color:var(--sub);font-size:12px;text-decoration:underline;cursor:pointer}
 button:active{transform:scale(.98)}
 button.primary{background:var(--ac);font-weight:700}
 button.danger{background:#7f1d1d}
@@ -65,11 +66,16 @@ select{font-size:14px;padding:6px;border-radius:6px;background:#334155;color:var
 <div id="vHome">
   <div class="card">
     <div class="sub">今日のセット</div>
-    <div class="big"><span id="sideN">0</span><span class="small"> 法規</span> ＋ <span id="dueN">0</span><span class="small"> 復習</span> ＋ <span id="newN">0</span><span class="small"> 新規</span> ＋ <span id="fillN">0</span><span class="small"> 練習</span></div>
+    <div class="big"><span id="dueN">0</span><span class="small"> 復習</span> ＋ <span id="newN">0</span><span class="small"> 新規</span> ＋ <span id="fillN">0</span><span class="small"> 練習</span> ＋ <span id="sideN">0</span><span class="small"> 法規（最後）</span></div>
     <div class="sub" id="tgtMsg"></div>
     <div class="sub" id="homeMsg"></div>
     <button class="primary hidden" id="btnResume"></button>
     <button class="hidden" id="btnRestart">最初からやり直す</button>
+    <div class="planEcho hidden" id="firstRunGuide">
+      このアプリの1日: 導入→講義→確認問題 の順で型を積み、<br>
+      1日120問（メイン115＋法規5）。<br>
+      間違えても翌週に類題が再出題されるので、✕を付けて進めてよい。 <button id="dismissGuide">消す</button>
+    </div>
     <button class="primary" id="btnStart">今日の学習を始める（導入→講義→演習）</button>
     <button id="btnPractice" class="hidden">自由練習（スケジュール外・混合10問）</button>
     <button id="btnWeekly" class="hidden">週テスト（今までの全型から混合・最大10問・点数を記録）</button>
@@ -206,7 +212,11 @@ function normalizeState(s){ // 外部データ・旧データを必ずv3の形�
 var KEYMETA="dk3-m3";
 function keyT(tid){return "dk3-t-"+tid}
 function readMeta(){try{var m=JSON.parse(localStorage.getItem(KEYMETA));if(m&&typeof m==="object"&&!Array.isArray(m))return m}catch(e){}return null}
-function writeMeta(m){localStorage.setItem(KEYMETA,JSON.stringify(m))}
+function writeMeta(m){
+  var prior=readMeta();
+  if(prior&&prior.guide===1)m.guide=1;
+  localStorage.setItem(KEYMETA,JSON.stringify(m));
+}
 function coerceRec(r){return {lv:(r.lv===2||r.m===true)?2:1,streak:Math.min(3,posInt(r.streak)),due:validDate(r.due)?r.due:null,done:posInt(r.done),x:posInt(r.x),m:r.m===true,secN:posInt(r.secN),secSum:(isFinite(Number(r.secSum))&&Number(r.secSum)>=0)?Number(r.secSum):0,born:validDate(r.born)?r.born:null}}
 function load(){
   // 旧blobが残っている間はblobを正本として毎回移行し直す（移行中断でも元データが消えない）
@@ -935,7 +945,20 @@ function renderText(s){
 }
 function show(id){["vHome","vQuiz","vEnd","vWeak"].forEach(function(v){document.getElementById(v).classList.toggle("hidden",v!==id)})}
 
+function guideIsFresh(){
+  if(localStorage.getItem(KEYMETA)!==null||localStorage.getItem("dk3-sess")!==null)return false;
+  for(var i=0;i<localStorage.length;i++){
+    if(/^dk3-t-/.test(localStorage.key(i)))return false;
+  }
+  return true;
+}
+document.getElementById("dismissGuide").onclick=function(){
+  writeMeta(Object.assign(readMeta()||{},{guide:1}));
+  renderHome();
+};
+
 function renderHome(){
+  document.getElementById("firstRunGuide").classList.toggle("hidden",!guideIsFresh());
   var saved=resumableSession(),resume=document.getElementById("btnResume");
   resume.classList.toggle("hidden",!saved);
   document.getElementById("btnRestart").classList.toggle("hidden",!saved);
@@ -1021,18 +1044,17 @@ function renderHome(){
 
 document.getElementById("btnStart").onclick=function(){
   var sideQuota=Math.max(0,DAILY_SIDE-usedSideToday());
-  sess=dueSide().map(function(t){return {t:t,isNew:false}})
-    .concat(newTypesSide(sideQuota))
-    .concat(dueMain().map(function(t){return {t:t,isNew:false}}))
+  sess=dueMain().map(function(t){return {t:t,isNew:false}})
     .concat(newTypesMain(newCount()));
   var target=DAILY_MAIN; // メインの量目標（法規5問とは別枠・法規は毎日並行）
-  var mainCount=dueMain().length+newCount();
+  var mainCount=sess.length;
   if(mainCount<target){
     var have={};
     sess.forEach(function(it){have[it.t.id]=1});
     var pool=T.filter(function(t){return S.stT[t.id]&&!S.stT[t.id].m&&!isSide(t)&&!have[t.id]});
     shuffle(pool).slice(0,target-mainCount).forEach(function(t){sess.push({t:t,isNew:false,practice:true})});
   }
+  sess=sess.concat(dueSide().map(function(t){return {t:t,isNew:false}}),newTypesSide(sideQuota));
   if(!sess.length){document.getElementById("homeMsg").textContent="本日の予定分は全て投入済み。下の「自由練習」で回せます。";return}
   enterSession("sched",0);
 };
@@ -1218,6 +1240,7 @@ function saveRating(t,r,secs,item){
   S=merged;
   // 書き込みはこの1型のキーだけ＝他タブの同時採点と一切衝突しない（新規数は born から導出）
   localStorage.setItem(keyT(t.id),JSON.stringify(s));
+  if(localStorage.getItem(KEYMETA)===null)writeMeta({guide:1});
   touchLog();
   advanceItem();
 }
