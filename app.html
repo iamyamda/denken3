@@ -154,10 +154,10 @@ select{font-size:14px;padding:6px;border-radius:6px;background:#334155;color:var
   </div>
 </div>
 
-<script src="data.js?v=5"></script>
-<script src="textbook.js?v=1"></script>
-<script src="chapters.js?v=1"></script>
-<script src="lessons.js?v=2"></script>
+<script src="data.js?v=6"></script>
+<script src="textbook.js?v=2"></script>
+<script src="chapters.js?v=2"></script>
+<script src="lessons.js?v=3"></script>
 <script>
 "use strict";
 if(typeof DATA==="undefined"){
@@ -326,6 +326,15 @@ function mkch(ans,dis,unit){
   }
   var correct=vals[0];shuffle(vals);
   return {ch:vals.map(function(v){return (v+" "+unit).trim()}),a:vals.indexOf(correct)}
+}
+function numeric(q,exp,ans,dis,unit){
+  var correct=(fmt(ans)+" "+unit).trim();
+  var ch=shuffle([ans].concat(dis).map(function(v){return (fmt(v)+" "+unit).trim()}));
+  return {q:q,ch:ch,a:ch.indexOf(correct),exp:exp,ans:ans};
+}
+function concept(q,exp,ans,dis){
+  var ch=shuffle([ans].concat(dis));
+  return {q:q,ch:ch,a:ch.indexOf(ans),exp:exp,ans:ans};
 }
 var GEN={
 ohm:function(lv){
@@ -643,7 +652,200 @@ leadlag:function(lv){
   var exp=calculation+ch[a];
   if(a===2)exp+="電源電圧の実効値が一定なら、インピーダンスは最小となり、電流は最大になる。";
   return {q:q,ch:ch,a:a,exp:exp}
-}};
+},
+yvoltage:function(lv){
+  var Vp=pick([100,120,150,200]),V=1.73*Vp;
+  if(lv===2){
+    return numeric("平衡Y結線の負荷の線間電圧は "+fmt(V)+" V である。相電圧は。（√3＝1.73 とする）",
+      "V相＝V/√3＝"+fmt(V)+"/1.73＝"+Vp+" V",Vp,[V,V*1.73,V/3,V/2],"V");
+  }
+  return numeric("平衡Y結線の負荷の相電圧は "+Vp+" V である。線間電圧は。（√3＝1.73 とする）",
+    "V＝√3 V相＝1.73×"+Vp+"＝"+fmt(V)+" V",V,[Vp,Vp/1.73,Vp*3,Vp*2],"V");
+},
+dcurrent:function(lv){
+  var Ip=pick([2,4,5,10]),I=1.73*Ip;
+  if(lv===2){
+    return numeric("平衡Δ結線の線電流は "+fmt(I)+" A である。相電流は。（√3＝1.73 とする）",
+      "I相＝I/√3＝"+fmt(I)+"/1.73＝"+Ip+" A",Ip,[I,I*1.73,I/3,I/2],"A");
+  }
+  return numeric("平衡Δ結線の相電流は "+Ip+" A である。線電流は。（√3＝1.73 とする）",
+    "I＝√3 I相＝1.73×"+Ip+"＝"+fmt(I)+" A",I,[Ip,Ip/1.73,Ip*3,Ip*2],"A");
+},
+ydconvert:function(lv){
+  var c=pick([[173,30],[346,60],[259.5,15],[207.6,36]]),V=c[0],Rd=c[1],Ry=Rd/3,Vp=V/1.73,I=Vp/Ry;
+  var start="三相の線間電圧 "+V+" V を、1相当たり "+Rd+" Ω の平衡Δ結線抵抗負荷に加える。等価なY結線に変換して計算する。（√3＝1.73 とする）";
+  var exp="RY＝RΔ/3＝"+Rd+"/3＝"+Ry+" Ω、V相＝"+V+"/1.73＝"+fmt(Vp)+" V、I＝I相＝"+fmt(Vp)+"/"+Ry+"＝"+fmt(I)+" A";
+  if(lv===2){
+    var P=3*I*I*Ry;
+    return numeric(start+"三相の消費電力は。",exp+"、P＝3I相²RY＝"+fmt(P)+" W",
+      P,[P/3,P*3,P/9,P/2],"W");
+  }
+  return numeric(start+"線電流は。",exp,I,[I/3,I*3,I/1.73,I*1.73],"A");
+},
+threepower:function(lv){
+  var c=pick([[200,10,0.8],[100,20,0.6],[400,5,0.75],[200,5,0.9]]);
+  var V=c[0],I=c[1],pf=c[2],S=1.73*V*I,P=S*pf;
+  var start="平衡三相負荷の線間電圧は "+V+" V、線電流は "+I+" A である。√3＝1.73 とする。";
+  var exp="S＝√3 VI＝1.73×"+V+"×"+I+"＝"+fmt(S)+" VA";
+  if(lv===2){
+    return numeric(start+"有効電力が "+fmt(P)+" W のとき、力率を小数で表すと。",
+      exp+"、cosφ＝P/S＝"+fmt(P)+"/"+fmt(S)+"＝"+pf,pf,[S/P,1-pf,pf/2,1],"");
+  }
+  return numeric(start+"力率が "+pf+" のとき、有効電力は。",
+    exp+"、P＝S cosφ＝"+fmt(S)+"×"+pf+"＝"+fmt(P)+" W",P,[S,P/1.73,P*3,S-P],"W");
+},
+threeload:function(lv){
+  var c=pick([[100,5,16],[120,6,15],[150,10,12],[200,5,24]]),Vp=c[0],Ip=c[1],R=c[2];
+  var start="平衡三相負荷の相電圧は "+Vp+" V、相電流は "+Ip+" A である。";
+  if(lv===2){
+    var P=3*Ip*Ip*R;
+    return numeric(start+"1相当たりのインピーダンスの抵抗分は "+R+" Ω である。三相の消費電力は。",
+      "P＝3I相²R＝3×"+Ip+"²×"+R+"＝"+P+" W",P,[P/3,3*Vp*Ip,3*Vp*Vp/R,P*3],"W");
+  }
+  var S=3*Vp*Ip;
+  return numeric(start+"三相の皮相電力は。","S＝3V相I相＝3×"+Vp+"×"+Ip+"＝"+S+" VA",
+    S,[S/3,S/1.73,S*3,S/2],"VA");
+},
+ydswitch:function(lv){
+  if(lv===2){
+    var P=pick([900,1200,1800,2400]);
+    return numeric("同じ抵抗器3個を平衡Δ結線にして三相電源につなぐと、消費電力は "+P+" W だった。線間電圧を保ち、同じ抵抗器をY結線にすると、三相の消費電力は。",
+      "Yでは各抵抗器の電圧がΔの1/√3。電力は電圧の二乗に比例するため、全体で "+P+"/3＝"+P/3+" W",
+      P/3,[P,P*3,P/Math.sqrt(3),P/9],"W");
+  }
+  var I=pick([2,4,5,8]);
+  return numeric("同じ抵抗器3個を平衡Y結線にして三相電源につなぐと、線電流は "+I+" A だった。線間電圧を保ち、同じ抵抗器をΔ結線にすると、線電流は。",
+    "Δでは相電圧と相電流がYの√3倍。さらに線電流は相電流の√3倍なので、線電流は "+I+"×3＝"+I*3+" A",
+    I*3,[I,I/3,I*Math.sqrt(3),I/Math.sqrt(3)],"A");
+},
+harmrms:function(lv){
+  if(lv===2){
+    var c=pick([[3,4,12],[6,8,24],[4,3,12],[8,6,24]]),D=c[0],V1=c[1],V3=c[2];
+    var V=Math.sqrt(D*D+V1*V1+V3*V3);
+    return numeric("周期電圧の直流分は "+D+" V、基本波の実効値は "+V1+" V、第3高調波の実効値は "+V3+" V である。全体の実効値は。",
+      "V＝√("+D+"²＋"+V1+"²＋"+V3+"²)＝"+V+" V",V,[V1+V3+D,Math.sqrt(V1*V1+V3*V3),V3,V1],"V");
+  }
+  var c=pick([[12,5],[8,6],[15,8],[24,7]]),V1=c[0],V3=c[1],V=Math.sqrt(V1*V1+V3*V3);
+  return numeric("基本波の実効値が "+V1+" V、第3高調波の実効値が "+V3+" V である。この2成分を重ねた電圧の実効値は。",
+    "V＝√("+V1+"²＋"+V3+"²)＝"+V+" V",V,[V1+V3,V1-V3,V1,V3],"V");
+},
+harmpeak:function(lv){
+  var c=pick([[4,3],[12,5],[15,8],[24,7]]),V1=c[0],V3=c[1],V=Math.sqrt(V1*V1+V3*V3);
+  var M1=fmt(1.41*V1),M3=fmt(1.41*V3);
+  if(lv===2){
+    return numeric("基本波の最大値が "+M1+" A、第3高調波の最大値が "+M3+" A である。この2成分だけを含む電流と同じ実効値をもつ正弦波の最大値は。（√2＝1.41 とする）",
+      "成分の実効値は "+V1+" A と "+V3+" A。合成実効値は "+V+" A なので、正弦波の最大値は 1.41×"+V+"＝"+fmt(V*1.41)+" A",
+      V*1.41,[V,(V1+V3)*1.41,(V1-V3)*1.41,V1*1.41],"A");
+  }
+  return numeric("基本波の最大値が "+M1+" A、第3高調波の最大値が "+M3+" A である。この2成分を重ねた電流の実効値は。（√2＝1.41 とする）",
+    "成分の実効値は "+M1+"/1.41＝"+V1+" A、"+M3+"/1.41＝"+V3+" A。合成実効値は √("+V1+"²＋"+V3+"²)＝"+V+" A",
+    V,[V1+V3,V1-V3,V1,V*1.41],"A");
+},
+thd:function(lv){
+  if(lv===2){
+    var c=pick([[25,3,4],[40,6,8],[50,5,12],[100,9,12]]),V1=c[0],V3=c[1],V5=c[2];
+    var H=Math.sqrt(V3*V3+V5*V5),D=100*H/V1;
+    return numeric("実効値が基本波 "+V1+" V、第3高調波 "+V3+" V、第5高調波 "+V5+" V の電圧がある。ひずみ率は何 % か。",
+      "高調波全体は √("+V3+"²＋"+V5+"²)＝"+H+" V、ひずみ率は "+H+"/"+V1+"×100＝"+fmt(D)+" %",
+      D,[100*(V3+V5)/V1,100*V3/V1,100*V5/V1,100*H/Math.sqrt(V1*V1+H*H)],"%");
+  }
+  var c=pick([[50,5],[20,4],[40,6],[100,25]]),V1=c[0],V3=c[1],D=100*V3/V1;
+  return numeric("基本波の実効値 "+V1+" V と第3高調波の実効値 "+V3+" V だけを含む電圧のひずみ率は何 % か。",
+    "ひずみ率は V₃/V₁×100＝"+V3+"/"+V1+"×100＝"+D+" %",D,[D/100,100-D,100*V1/V3,D/2],"%");
+},
+equivsine:function(lv){
+  if(lv===2){
+    var c=pick([[6,8],[12,5],[15,8],[24,7]]),V1=c[0],V3=c[1],V=Math.sqrt(V1*V1+V3*V3);
+    return numeric("基本波 "+V1+" V、第3高調波 "+V3+" V（いずれも実効値）を含む電圧と、同じ抵抗で平均発熱電力が等しくなる等価正弦波の最大値は。（√2＝1.41 とする）",
+      "実効値は √("+V1+"²＋"+V3+"²)＝"+V+" V。等価正弦波の最大値は 1.41×"+V+"＝"+fmt(1.41*V)+" V",
+      1.41*V,[V,V/1.41,V1+V3,2*V],"V");
+  }
+  var V=pick([10,20,30,50]);
+  return numeric("実効値 "+V+" V のひずみ波電圧と、同じ抵抗で平均発熱電力が等しくなる等価正弦波の実効値は。",
+    "同じ抵抗では平均発熱電力が実効値の二乗に比例する。等価正弦波の実効値も "+V+" V",
+    V,[V/2,2*V,V/Math.sqrt(2),V*Math.sqrt(2)],"V");
+},
+rectwave:function(lv){
+  var Vm=pick([15.7,31.4,62.8,78.5]),avg=2*Vm/3.14,rms=Vm/1.414;
+  if(lv===2){
+    return numeric("最大値 "+Vm+" V の正弦波を理想的に全波整流し、理想コンデンサで平滑する。負荷も漏れもなく、定常状態での出力電圧波形の実効値は。",
+      "無負荷・漏れなしの定常状態ではコンデンサが最大値 "+Vm+" V を保つ。一定の直流なので実効値も "+Vm+" V",
+      Vm,[avg,rms,Vm/2,2*Vm],"V");
+  }
+  return numeric("最大値 "+Vm+" V の正弦波を理想的に全波整流した。平滑しない出力電圧の一周期平均値は。（π＝3.14、√2＝1.414 とする）",
+    "全波整流の平均値は 2Vm/π＝2×"+Vm+"/3.14＝"+fmt(avg)+" V。Vm/√2 は実効値",
+    avg,[rms,Vm,Vm/2,Vm/3.14],"V");
+},
+coilrange:function(lv){
+  var c=pick([[1,90,10],[2,60,4],[5,80,5],[1,70,8]]),I=c[0],r=c[1],m=c[2];
+  if(lv===2){
+    var Rs=(m-1)*r;
+    return numeric("可動コイル形の直流計器は内部抵抗 "+r+" Ω、全目盛電流 "+I+" mA である。直流電圧計として計器単体の "+m+" 倍の電圧まで測るとき、直列に入れる倍率器の抵抗は。",
+      "同じ全目盛電流で全抵抗を "+m+" 倍にする。倍率器は (m−1)r＝("+m+"−1)×"+r+"＝"+Rs+" Ω",
+      Rs,[m*r,r,r/(m-1),r/m],"Ω");
+  }
+  var Rsh=r/(m-1);
+  return numeric("可動コイル形の直流計器は内部抵抗 "+r+" Ω、全目盛電流 "+I+" mA である。"+I*m+" mA まで測るとき、計器に並列に入れる分流器の抵抗は。",
+    "分流器は "+(I*m-I)+" mA、計器は "+I+" mA。同じ電圧がかかるので、分流器は "+r+"×"+I+"/"+(I*m-I)+"＝"+Rsh+" Ω",
+    Rsh,[r,r/m,(m-1)*r,m*r],"Ω");
+},
+movingiron:function(lv){
+  var cases=[
+    ["コイルに直流を流して鉄片を吸引する可動鉄片形で、電流の大きさを保って極性だけを逆にした。指針の振れは。",
+     "同じ向きに同じだけ振れる","電流を反転しても鉄片の磁化も反転し、吸引する向きは変わらない。電流の大きさが同じなら指針の振れも同じ（ヒステリシスなどは無視）"],
+    ["一般的な可動鉄片形計器で測定できる電流と、目盛りの性質の組合せは。",
+     "直流・交流両用、目盛りは一般に不均一","電流の向きにかかわらず電磁力が同じ向きに働くため、直流・交流に使える。トルクは電流の二乗に関係するため、目盛りは一般に不均一"]
+  ];
+  if(lv===2){
+    var c=cases[1],q=pick([c[0],"磁界を作るコイルと鉄片で指針を動かす計器がある。測定できる電流と、目盛りの性質の組合せは。"]);
+    return concept(q,c[2],c[1],
+      ["直流専用、目盛りは均一","交流専用、目盛りは均一","交流専用、目盛りは一般に不均一","直流・交流両用、目盛りは原理上必ず均一"]);
+  }
+  var c=cases[0],I=pick([0.2,0.4,0.6,0.8]);
+  var q=c[0].replace("直流を","定格内の直流 "+I+" A を");
+  return concept(q+"（ヒステリシスなどは無視する。）",c[2],c[1],
+    ["逆向きに同じだけ振れる","振れがゼロになる","同じ向きに必ず2倍振れる","逆向きに半分だけ振れる"]);
+},
+dynamopower:function(lv){
+  var c=pick([[100,4,0.8],[120,5,0.6],[200,3,0.75],[100,6,0.9]]);
+  var V=c[0],I=c[1],pf=c[2],S=V*I;
+  if(lv===2){
+    return numeric("電流力計形電力計の電流コイルを負荷と直列に、電圧コイルの回路を負荷と並列につないだ。正弦波の単相交流負荷の端子電圧は "+V+" V、電流は "+I+" A（ともに実効値）、力率は "+pf+" である。計器の負荷への影響を無視したとき、指示する電力は。",
+      "交流でもトルクの一周期平均は電圧と電流の瞬時値の積の平均に比例する。P＝"+V+"×"+I+"×"+pf+"＝"+fmt(S*pf)+" W",
+      S*pf,[S,S/pf,S*(1-pf),S*pf/2],"W");
+  }
+  var q="電流力計形電力計で直流負荷の電力を測る。負荷の端子電圧は "+V+" V、負荷電流は "+I+" A である。計器の負荷への影響を無視したとき、指示する電力は。";
+  return numeric(q,"固定の電流コイルと可動の電圧コイルに流れる電流の積でトルクが決まる。直流なら P＝VI＝"+V+"×"+I+"＝"+S+" W",
+    S,[S/2,2*S,V/I,I*I],"W");
+},
+rectmeter:function(lv){
+  var Vm=pick([15.7,31.4,62.8,78.5]),avg=2*Vm/3.14,rms=Vm/1.414;
+  if(lv===2){
+    return numeric("正弦波の実効値で目盛り付けした平均値応答の整流形電圧計に、最大値 "+Vm+" V の正弦波を加える。理想全波整流とし、目盛りの指示値は何 V か。（π＝3.14、√2＝1.414 とする）",
+      "可動部は整流平均値 2Vm/π＝"+fmt(avg)+" V に応答する。目盛りは入力正弦波の実効値 Vm/√2＝"+fmt(rms)+" V を指す",
+      rms,[avg,Vm,Vm/2,Vm/3.14],"V");
+  }
+  var q=pick([
+    "可動コイル形を利用して交流を測る整流形計器には、どの素子を組み合わせるか。",
+    "永久磁石と可動コイルを用いた指針式計器で、交流入力をコイルに同じ向きの電流として流したい。用いる素子は。"
+  ]);
+  return concept(q,
+    "可動コイル形のトルクは電流の向きとともに反転する。整流器で可動コイルに同じ向きの電流を流す",
+    "整流器",["分流器","倍率器","コンデンサだけ","リアクトルだけ"]);
+},
+meterchoice:function(lv){
+  var c=pick(lv===2?[
+    ["停電・切離しした電路の導体と外箱の間に規定の直流試験電圧を加え、漏れ電流から抵抗を求めたい。","絶縁抵抗計","絶縁抵抗計は直流試験電圧で導体と外箱間の絶縁抵抗を求める"],
+    ["補助極を使って試験電流を流し、接地極の対地抵抗を求めたい。","接地抵抗計","接地抵抗計は接地極と大地との間の抵抗を求める"]
+  ]:[
+    ["電路を切らずに、単独の交流導体を挟んで負荷電流を測りたい。","クランプメータ","クランプメータは導体の電流が作る磁界を利用する"],
+    ["停電・切離しした電路で、導体と大地の間の絶縁の良否を抵抗で調べたい。","絶縁抵抗計","絶縁抵抗計は高い直流試験電圧を加えて絶縁抵抗を測る"],
+    ["接地工事をした接地極の対地抵抗を測りたい。","接地抵抗計","接地抵抗計は接地極と大地との間の抵抗を測る"]
+  ]);
+  var meters=["絶縁抵抗計","接地抵抗計","クランプメータ","電力計","周波数計"];
+  return concept(c[0]+"適した計器は。",c[2],c[1],meters.filter(function(meter){return meter!==c[1]}));
+}
+};
 var lastQ={};
 function serveType(t,lv){
   if(t.gen&&GEN[t.gen]){
@@ -1137,7 +1339,9 @@ function stepItem(){
     var hasLesson=Array.isArray(lesson)&&lesson.length>0;
     if(u&&(hasLesson||u.intro)&&!unitTouched(t.unit)){
       gateStage=0;
-      if(hasLesson)showLesson(lesson,0);
+      if(hasLesson&&["RI05","RI06","RI07"].indexOf(u.id)!==-1)
+        showGate(u.s+"・"+u.n+"（単元の導入）",CHAPTERS[u.id],"次へ：レッスンへ",function(){showLesson(lesson,0)});
+      else if(hasLesson)showLesson(lesson,0);
       else showGate(u.s+"・"+u.n+"（単元の導入）",(typeof CHAPTERS!=='undefined'&&CHAPTERS[u.id])||u.intro,"次へ：この型の講義へ");
       return;
     }

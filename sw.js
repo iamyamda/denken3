@@ -1,7 +1,7 @@
 // ネットワーク優先（更新が即反映）→ 通信エラー・同一オリジンのHTTPエラー時は自分のキャッシュから完全一致で返す。
-// バージョン: dk3-v8（data.js/textbook.js/chapters.js/lessons.js を同梱。フォールバックは自キャッシュ内の完全一致のみ＝
+// バージョン: dk3-v9（data.js/textbook.js/chapters.js/lessons.js を同梱。フォールバックは自キャッシュ内の完全一致のみ＝
 // 古いbare URLエントリや他アプリのキャッシュに誤ヒットしない）。
-var CACHE="dk3-v8";
+var CACHE="dk3-v9";
 self.addEventListener("install",function(e){
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(function(c){
