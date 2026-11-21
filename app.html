@@ -157,6 +157,7 @@ select{font-size:14px;padding:6px;border-radius:6px;background:#334155;color:var
 <script src="data.js?v=5"></script>
 <script src="textbook.js?v=1"></script>
 <script src="chapters.js?v=1"></script>
+<script src="lessons.js?v=2"></script>
 <script>
 "use strict";
 if(typeof DATA==="undefined"){
@@ -1074,13 +1075,52 @@ document.getElementById("btnPractice").onclick=function(){
 
 function unitTouched(uid){return T.some(function(x){return x.unit===uid&&S.stT[x.id]})}
 var gateStage=0;
-function showGate(title,body,okLabel){
+function showGate(title,body,okLabel,onNext){
+  document.getElementById("typeCardInner").scrollTop=0;
+  document.getElementById("btnCardOk").onclick=onNext||advanceGate;
   document.getElementById("cardName").textContent=title;
   document.getElementById("cardBody").innerHTML=renderText(body);
   document.getElementById("btnCardOk").textContent=okLabel;
   document.getElementById("btnCardOk").style.display="block";
   document.getElementById("btnCardClose").style.display="none";
   document.getElementById("typeCard").classList.remove("hidden");
+}
+function showLesson(segments,index){
+  var segment=segments[index],last=index===segments.length-1;
+  showGate("レッスン "+(index+1)+" / "+segments.length,"",last?"レッスン終了 → 例題へ":"次へ",
+    last?advanceGate:function(){showLesson(segments,index+1)});
+  var body=document.getElementById("cardBody");
+  var passage=document.createElement("div");
+  passage.style.whiteSpace="pre-wrap";
+  passage.textContent=segment.q||segment.t;
+  body.appendChild(passage);
+  if(!segment.q)return;
+
+  var next=document.getElementById("btnCardOk");
+  next.style.display="none";
+  var choices=document.createElement("div");
+  choices.className="choices";
+  var feedback=document.createElement("div");
+  feedback.setAttribute("role","status");
+  feedback.style.whiteSpace="pre-wrap";
+  body.appendChild(choices);
+  body.appendChild(feedback);
+  segment.ch.forEach(function(label,i){
+    var button=document.createElement("button");
+    button.className="choice";
+    button.textContent=label;
+    button.onclick=function(){
+      if(button.disabled)return;
+      var correct=i===segment.a;
+      Array.from(choices.children).forEach(function(b){b.disabled=true});
+      choices.classList.add("done");
+      button.classList.add(correct?"correct":"wrong");
+      choices.children[segment.a].classList.add("correct");
+      feedback.textContent=(correct?"正解":"不正解")+"\n"+segment.exp;
+      next.style.display="block";
+    };
+    choices.appendChild(button);
+  });
 }
 function closeGate(){
   document.getElementById("typeCard").classList.add("hidden");
@@ -1093,9 +1133,12 @@ function stepItem(){
   document.getElementById("qIdx").textContent=(idx+1)+" / "+sess.length;
   if(item.isNew){ // 鉄緑の授業の順: 単元導入 → 型の講義 → 確認問題。初見をいきなり解かせない
     var u=um(t.unit);
-    if(u&&u.intro&&!unitTouched(t.unit)){
+    var lesson=u&&window.LESSONS&&window.LESSONS[u.id];
+    var hasLesson=Array.isArray(lesson)&&lesson.length>0;
+    if(u&&(hasLesson||u.intro)&&!unitTouched(t.unit)){
       gateStage=0;
-      showGate(u.s+"・"+u.n+"（単元の導入）",(typeof CHAPTERS!=='undefined'&&CHAPTERS[u.id])||u.intro,"次へ：この型の講義へ");
+      if(hasLesson)showLesson(lesson,0);
+      else showGate(u.s+"・"+u.n+"（単元の導入）",(typeof CHAPTERS!=='undefined'&&CHAPTERS[u.id])||u.intro,"次へ：この型の講義へ");
       return;
     }
     gateStage=1;
@@ -1104,7 +1147,7 @@ function stepItem(){
   }
   showQuestion(item);
 }
-document.getElementById("btnCardOk").onclick=function(){
+function advanceGate(){
   var t=sess[idx].t;
   if(gateStage===0){
     gateStage=1;
@@ -1113,7 +1156,7 @@ document.getElementById("btnCardOk").onclick=function(){
   }
   closeGate();
   showQuestion(sess[idx]);
-};
+}
 
 function showQuestion(item){
   var t=item.t,isNew=item.isNew;
